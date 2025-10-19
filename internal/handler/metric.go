@@ -39,7 +39,7 @@ func (h *MetricHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metricType := strings.ToLower(r.PathValue("type"))
-	metricName := strings.ToLower(r.PathValue("name"))
+	metricName := strings.TrimSpace(strings.ToLower(r.PathValue("name")))
 	metricValue := strings.ToLower(r.PathValue("value"))
 
 	if metricName == "" {
@@ -55,14 +55,22 @@ func (h *MetricHandler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid gauge value", http.StatusBadRequest)
 			return
 		}
-		h.metricService.Update(metricType, metricName, val)
+		err = h.metricService.Update(metricType, metricName, val)
+		if err != nil {
+			http.Error(w, "failed to update metric", http.StatusInternalServerError)
+			return
+		}
 	case model.Counter:
 		val, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
 			http.Error(w, "Invalid counter value", http.StatusBadRequest)
 			return
 		}
-		h.metricService.Update(metricType, metricName, val)
+		err = h.metricService.Update(metricType, metricName, val)
+		if err != nil {
+			http.Error(w, "failed to update metric", http.StatusInternalServerError)
+			return
+		}
 	default:
 		http.Error(w, "Invalid metric type", http.StatusBadRequest)
 		return
