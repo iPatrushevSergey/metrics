@@ -1,26 +1,43 @@
 package inmemory
 
-import "github.com/iPatrushevSergey/metrics/internal/model"
+import (
+	"sync"
 
-type MemStorageMetricRepository struct {
-	metrics map[string]model.Metric
+	"github.com/iPatrushevSergey/metrics/internal/model"
+)
+
+type MetricRepository interface {
+	GetByName(name string) (model.Metric, bool)
+	Update(name string, metric model.Metric)
+	Create(name string, metric model.Metric)
 }
 
-func NewMemStorageMetricRepository() *MemStorageMetricRepository {
+type MemStorageMetricRepository struct {
+	mu sync.RWMutex
+	DB map[string]model.Metric
+}
+
+func NewMemStorageMetricRepository() MetricRepository {
 	return &MemStorageMetricRepository{
-		metrics: make(map[string]model.Metric),
+		DB: make(map[string]model.Metric),
 	}
 }
 
 func (r *MemStorageMetricRepository) GetByName(name string) (model.Metric, bool) {
-	metric, exists := r.metrics[name]
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	metric, exists := r.DB[name]
 	return metric, exists
 }
 
 func (r *MemStorageMetricRepository) Create(name string, metric model.Metric) {
-	r.metrics[name] = metric
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.DB[name] = metric
 }
 
 func (r *MemStorageMetricRepository) Update(name string, metric model.Metric) {
-	r.metrics[name] = metric
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.DB[name] = metric
 }
