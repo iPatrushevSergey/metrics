@@ -1,19 +1,22 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/iPatrushevSergey/metrics/internal/model"
+	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 )
 
 type MetricsService struct {
-	metricRepo MetricRepository
+	metricRepo inmemory.MetricRepository
 }
 
-func NewMetricService(repo MetricRepository) *MetricsService {
+func NewMetricService(repo inmemory.MetricRepository) *MetricsService {
 	return &MetricsService{metricRepo: repo}
 }
 
-func (s *MetricsService) Update(mType, mName string, value any) {
+func (s *MetricsService) Update(mType, mName string, value any) error {
 	metric, exists := s.metricRepo.GetByName(mName)
 
 	// If there is no object, I should return the error that the object was not found.
@@ -29,9 +32,11 @@ func (s *MetricsService) Update(mType, mName string, value any) {
 			metric.Value = &v
 		case int64:
 			metric.Delta = &v
+		default:
+			return fmt.Errorf("unsupported value type: %T", value)
 		}
 		s.metricRepo.Create(mName, metric)
-		return
+		return nil
 	}
 
 	switch v := value.(type) {
@@ -39,6 +44,9 @@ func (s *MetricsService) Update(mType, mName string, value any) {
 		metric.Value = &v
 	case int64:
 		*metric.Delta += v
+	default:
+		return fmt.Errorf("unsupported value type: %T", value)
 	}
 	s.metricRepo.Update(mName, metric)
+	return nil
 }
