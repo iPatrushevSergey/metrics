@@ -16,6 +16,18 @@ func NewMetricService(repo inmemory.MetricRepository) *MetricsService {
 	return &MetricsService{metricRepo: repo}
 }
 
+func (s *MetricsService) Get(mName string) (model.Metric, error) {
+	metric, exists := s.metricRepo.GetByName(mName)
+	if !exists {
+		return model.Metric{}, fmt.Errorf("metric not found")
+	}
+	return metric, nil
+}
+
+func (s *MetricsService) GetAll() map[string]model.Metric {
+	return s.metricRepo.GetAll()
+}
+
 func (s *MetricsService) Update(mType, mName string, value any) error {
 	metric, exists := s.metricRepo.GetByName(mName)
 
