@@ -8,6 +8,7 @@ import (
 
 type MetricRepository interface {
 	GetByName(name string) (model.Metric, bool)
+	GetAll() map[string]model.Metric
 	Update(name string, metric model.Metric)
 	Create(name string, metric model.Metric)
 }
@@ -28,6 +29,17 @@ func (r *MemStorageMetricRepository) GetByName(name string) (model.Metric, bool)
 	defer r.mu.RUnlock()
 	metric, exists := r.DB[name]
 	return metric, exists
+}
+
+func (r *MemStorageMetricRepository) GetAll() map[string]model.Metric {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	metricsCopy := make(map[string]model.Metric, len(r.DB))
+	for name, metric := range r.DB {
+		metricsCopy[name] = metric
+	}
+	return metricsCopy
 }
 
 func (r *MemStorageMetricRepository) Create(name string, metric model.Metric) {
