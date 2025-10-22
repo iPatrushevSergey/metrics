@@ -9,10 +9,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMetricServiceUpdate(t *testing.T) {
-	floatp := func(f float64) *float64 { return &f }
-	intp := func(i int64) *int64 { return &i }
+func floatp(f float64) *float64 { return &f }
+func intp(i int64) *int64       { return &i }
 
+func TestMetricServiceGet(t *testing.T) {
+	initialState := map[string]model.Metric{
+		"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(10.5)},
+		"counter": {ID: "c1", MType: model.Counter, Delta: intp(50)},
+	}
+
+	repo := inmemory.NewMemStorageMetricRepository()
+	typedRepo := repo.(*inmemory.MemStorageMetricRepository)
+	typedRepo.DB = initialState
+
+	metricService := NewMetricService(typedRepo)
+
+	t.Run("success get metric", func(t *testing.T) {
+		metric, err := metricService.Get("gauge")
+		require.NoError(t, err)
+		assert.Equal(t, floatp(10.5), metric.Value)
+	})
+
+	t.Run("error metric not found", func(t *testing.T) {
+		_, err := metricService.Get("nonexistent")
+		require.Error(t, err)
+		assert.EqualError(t, err, "metric not found")
+	})
+}
+
+func TestMetricServiceGetAll(t *testing.T) {
+	t.Run("get all existing metrics", func(t *testing.T) {
+		initialState := map[string]model.Metric{
+			"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(10.5)},
+			"counter": {ID: "c1", MType: model.Counter, Delta: intp(50)},
+		}
+
+		repo := inmemory.NewMemStorageMetricRepository()
+		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
+		typedRepo.DB = initialState
+
+		metricService := NewMetricService(typedRepo)
+
+		allMetrics := metricService.GetAll()
+		assert.Equal(t, 2, len(allMetrics))
+		assert.Contains(t, allMetrics, "gauge")
+		assert.Contains(t, allMetrics, "counter")
+	})
+
+	t.Run("get empty metrics map", func(t *testing.T) {
+		initialState := map[string]model.Metric{}
+
+		repo := inmemory.NewMemStorageMetricRepository()
+		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
+		typedRepo.DB = initialState
+
+		metricService := NewMetricService(typedRepo)
+
+		allMetrics := metricService.GetAll()
+		assert.Empty(t, allMetrics)
+	})
+}
+
+func TestMetricServiceUpdate(t *testing.T) {
 	type want struct {
 		metric model.Metric
 		exists bool
