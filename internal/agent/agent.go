@@ -87,6 +87,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 }
 
 func (a *Agent) sendAllMetrics() {
+	// TODO: it makes sense to implement query bundling
 	a.mu.RLock()
 	ms := a.memStats
 	cs := a.customStats
