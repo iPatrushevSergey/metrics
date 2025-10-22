@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
@@ -20,12 +22,15 @@ func main() {
 	metricService := service.NewMetricService(repo)
 	metricHandler := handler.NewMetricHandler(metricService)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(`POST /update/{type}/{name}/{value}`, metricHandler.Update)
+	router := gin.Default()
+
+	router.GET("/", metricHandler.GetAll)
+	router.POST("/update/:type/:name/:value", metricHandler.Update)
+	router.GET("/value/:type/:name", metricHandler.Get)
 
 	server := &http.Server{
 		Addr:    ":8080",
-		Handler: mux,
+		Handler: router,
 	}
 
 	go func() {
