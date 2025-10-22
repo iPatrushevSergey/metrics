@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func floatp(f float64) *float64 { return &f }
+func intp(i int64) *int64       { return &i }
+
 func TestMemStorageMetricRepository(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		repo := NewMemStorageMetricRepository()
@@ -60,6 +63,26 @@ func TestMemStorageMetricRepository(t *testing.T) {
 
 		_, exists := repo.GetByName("nonexistent")
 		assert.False(t, exists)
+	})
+
+	t.Run("get all", func(t *testing.T) {
+		initialState := map[string]model.Metric{
+			"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(10.1)},
+			"counter": {ID: "c1", MType: model.Counter, Delta: intp(5)},
+		}
+
+		repo := NewMemStorageMetricRepository()
+		typedRepo := repo.(*MemStorageMetricRepository)
+
+		typedRepo.DB = initialState
+
+		allMetrics := typedRepo.GetAll()
+		assert.Equal(t, 2, len(initialState))
+		assert.Equal(t, initialState["gauge"], allMetrics["gauge"])
+		assert.Equal(t, initialState["counter"], allMetrics["counter"])
+
+		allMetrics["test"] = model.Metric{ID: "1", MType: model.Gauge, Value: floatp(11.1)}
+		assert.Equal(t, 2, len(typedRepo.DB))
 	})
 
 	t.Run("concurrency safety check", func(t *testing.T) {
