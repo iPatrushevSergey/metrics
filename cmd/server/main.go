@@ -15,9 +15,13 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
+
+	"github.com/iPatrushevSergey/metrics/internal/config"
 )
 
 func main() {
+	flags := config.ServerParseFlags()
+
 	repo := inmemory.NewMemStorageMetricRepository()
 	metricService := service.NewMetricService(repo)
 	metricHandler := handler.NewMetricHandler(metricService)
@@ -29,7 +33,7 @@ func main() {
 	router.GET("/value/:type/:name", metricHandler.Get)
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    flags.NetAddress.String(),
 		Handler: router,
 	}
 
