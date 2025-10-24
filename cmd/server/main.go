@@ -20,7 +20,11 @@ import (
 )
 
 func main() {
-	flags := config.ServerParseFlags()
+	flags, err := config.ServerParseFlags()
+	if err != nil {
+		log.Fatalf("error parsing flags: %v", err)
+	}
+	log.Printf("Starting server with options: %+v\n", flags)
 
 	repo := inmemory.NewMemStorageMetricRepository()
 	metricService := service.NewMetricService(repo)
