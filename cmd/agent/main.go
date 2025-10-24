@@ -10,14 +10,18 @@ import (
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/internal/agent"
+	"github.com/iPatrushevSergey/metrics/internal/config"
 )
 
 func main() {
+	flags := config.AgentParseFlags()
+
 	cfg := agent.Config{
-		PollInterval:   2 * time.Second,
-		ReportInterval: 10 * time.Second,
-		ServerAddress:  "http://127.0.0.1:8080",
+		PollInterval:   time.Duration(flags.PollInterval) * time.Second,
+		ReportInterval: time.Duration(flags.ReportInterval) * time.Second,
+		ServerAddress:  "http://" + flags.NetAddress.String(),
 	}
+	log.Println("Running server on", cfg.ServerAddress)
 
 	a := agent.NewAgent(cfg)
 
