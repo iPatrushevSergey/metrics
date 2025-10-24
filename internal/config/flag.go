@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"flag"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -40,26 +41,38 @@ func (a *NetAddress) Set(s string) error {
 	return nil
 }
 
-func AgentParseFlags() AgentOptions {
+func AgentParseFlags() (AgentOptions, error) {
 	options := AgentOptions{
 		NetAddress: NetAddress{Host: "localhost", Port: 8080},
 	}
 
-	flag.Var(&options.NetAddress, "a", "address and port to run server (default '127.0.0.1:8080')")
-	flag.IntVar(&options.ReportInterval, "r", 10, "frequency of sending metrics (default 10s)")
-	flag.IntVar(&options.PollInterval, "p", 2, "frequency of metrics polling (default 2s)")
+	fs := flag.NewFlagSet("agent", flag.ExitOnError)
 
-	flag.Parse()
-	return options
+	fs.Var(&options.NetAddress, "a", "address and port to run server (default '127.0.0.1:8080')")
+	fs.IntVar(&options.ReportInterval, "r", 10, "frequency of sending metrics (default 10s)")
+	fs.IntVar(&options.PollInterval, "p", 2, "frequency of metrics polling (default 2s)")
+
+	err := fs.Parse(os.Args[1:])
+	if err != nil {
+		return options, err
+	}
+
+	return options, nil
 }
 
-func ServerParseFlags() ServerOptions {
+func ServerParseFlags() (ServerOptions, error) {
 	options := ServerOptions{
 		NetAddress: NetAddress{Host: "localhost", Port: 8080},
 	}
 
-	flag.Var(&options.NetAddress, "a", "address and port to run server (default '127.0.0.1:8080')")
+	fs := flag.NewFlagSet("server", flag.ExitOnError)
 
-	flag.Parse()
-	return options
+	fs.Var(&options.NetAddress, "a", "address and port to run server (default '127.0.0.1:8080')")
+
+	err := fs.Parse(os.Args[1:])
+	if err != nil {
+		return options, err
+	}
+
+	return options, nil
 }
