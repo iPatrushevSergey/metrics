@@ -14,7 +14,11 @@ import (
 )
 
 func main() {
-	flags := config.AgentParseFlags()
+	flags, err := config.AgentParseFlags()
+	if err != nil {
+		log.Fatalf("error parsing flags: %v", err)
+	}
+	log.Printf("Starting agent with options: %+v\n", flags)
 
 	cfg := agent.Config{
 		PollInterval:   time.Duration(flags.PollInterval) * time.Second,
