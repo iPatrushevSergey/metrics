@@ -117,19 +117,6 @@ func (h *MetricHandler) GetAll(c *gin.Context) {
 
 func (h *MetricHandler) Update(c *gin.Context) {
 	// Transport validation
-	// contentType := c.GetHeader("Content-Type")
-	// mediaType, params, err := mime.ParseMediaType(contentType)
-
-	// if err != nil || mediaType != "text/plain" {
-	// 	c.String(http.StatusUnsupportedMediaType, "Expected Content-Type: text/plain")
-	// 	return
-	// }
-
-	// if charset := params["charset"]; charset != "" && charset != "utf-8" {
-	// 	c.String(http.StatusUnsupportedMediaType, "Unsupported charset")
-	// 	return
-	// }
-
 	metricType := strings.ToLower(c.Param("type"))
 	metricName := strings.TrimSpace(strings.ToLower(c.Param("name")))
 	metricValue := strings.ToLower(c.Param("value"))
