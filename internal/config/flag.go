@@ -43,7 +43,7 @@ func (a *NetAddress) Set(s string) error {
 
 func AgentParseFlags() (AgentOptions, error) {
 	options := AgentOptions{
-		NetAddress: NetAddress{Host: "localhost", Port: 8080},
+		NetAddress: NetAddress{Host: "127.0.0.1", Port: 8080},
 	}
 
 	fs := flag.NewFlagSet("agent", flag.ExitOnError)
@@ -62,7 +62,7 @@ func AgentParseFlags() (AgentOptions, error) {
 
 func ServerParseFlags() (ServerOptions, error) {
 	options := ServerOptions{
-		NetAddress: NetAddress{Host: "localhost", Port: 8080},
+		NetAddress: NetAddress{Host: "127.0.0.1", Port: 8080},
 	}
 
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
