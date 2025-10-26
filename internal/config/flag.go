@@ -6,13 +6,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type AgentOptions struct {
 	NetAddress     NetAddress
-	PollInterval   time.Duration
-	ReportInterval time.Duration
+	PollInterval   int
+	ReportInterval int
 }
 
 type ServerOptions struct {
@@ -50,8 +49,8 @@ func AgentParseFlags() (AgentOptions, error) {
 	fs := flag.NewFlagSet("agent", flag.ExitOnError)
 
 	fs.Var(&options.NetAddress, "a", "address and port to run server (default '127.0.0.1:8080')")
-	fs.DurationVar(&options.ReportInterval, "r", 10*time.Second, "frequency of sending metrics (default 10s)")
-	fs.DurationVar(&options.PollInterval, "p", 2*time.Second, "frequency of metrics polling (default 2s)")
+	fs.IntVar(&options.ReportInterval, "r", 10, "frequency of sending metrics (default 10s)")
+	fs.IntVar(&options.PollInterval, "p", 2, "frequency of metrics polling (default 2s)")
 
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
