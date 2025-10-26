@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/iPatrushevSergey/metrics/internal/agent"
 	"github.com/iPatrushevSergey/metrics/internal/config"
@@ -21,8 +20,8 @@ func main() {
 	log.Printf("Starting agent with options: %+v\n", flags)
 
 	cfg := agent.Config{
-		PollInterval:   time.Duration(flags.PollInterval) * time.Second,
-		ReportInterval: time.Duration(flags.ReportInterval) * time.Second,
+		PollInterval:   flags.PollInterval,
+		ReportInterval: flags.ReportInterval,
 		ServerAddress:  "http://" + flags.NetAddress.String(),
 	}
 	log.Println("Running server on", cfg.ServerAddress)
