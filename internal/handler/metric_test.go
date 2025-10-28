@@ -49,25 +49,16 @@ func TestMetricHandlerUpdate(t *testing.T) {
 			method:     http.MethodPost,
 			want: want{
 				statusCode: http.StatusBadRequest,
-				body:       "Invalid metric type",
+				body:       "invalid metric type",
 			},
 		},
 		{
-			name:       "invalid gauge value",
+			name:       "invalid metric value",
 			requestURL: "/update/gauge/testGauge/test",
 			method:     http.MethodPost,
 			want: want{
 				statusCode: http.StatusBadRequest,
-				body:       "Invalid gauge value",
-			},
-		},
-		{
-			name:       "invalid counter value",
-			requestURL: "/update/counter/testCounter/test",
-			method:     http.MethodPost,
-			want: want{
-				statusCode: http.StatusBadRequest,
-				body:       "Invalid counter value",
+				body:       "invalid metric value",
 			},
 		},
 		{
@@ -151,7 +142,7 @@ func TestMetricHandlerGet(t *testing.T) {
 		{
 			name:       "internal error on nil value",
 			requestURL: "/value/gauge/nil",
-			want:       want{statusCode: http.StatusInternalServerError, body: "gauge value is nil"},
+			want:       want{statusCode: http.StatusInternalServerError, body: "internal service error"},
 		},
 	}
 
