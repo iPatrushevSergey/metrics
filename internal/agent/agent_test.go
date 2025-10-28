@@ -157,7 +157,7 @@ func TestSendMetric(t *testing.T) {
 			defer ts.Close()
 
 			agent := NewAgent(Config{ServerAddress: ts.URL})
-			err := agent.sendMetric(tt.metricType, tt.metricName, tt.metricValue)
+			err := agent.sendMetric(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
 
 			if tt.wantError {
 				if err == nil {
