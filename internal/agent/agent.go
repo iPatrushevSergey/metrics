@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -78,7 +79,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			log.Println("The beginning of sending metrics")
-			a.sendAllMetrics()
+			a.sendAllMetrics(ctx)
 		case <-ctx.Done():
 			log.Println("The metrics sender has been stopped")
 			return
@@ -86,7 +87,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 	}
 }
 
-func (a *Agent) sendAllMetrics() {
+func (a *Agent) sendAllMetrics(ctx context.Context) {
 	// TODO: it makes sense to implement query bundling
 	a.mu.RLock()
 	ms := a.memStats
@@ -95,25 +96,47 @@ func (a *Agent) sendAllMetrics() {
 
 	gaugeMetrics := getGaugeMetrics(&ms, &cs)
 	for name, value := range gaugeMetrics {
+		select {
+		case <-ctx.Done():
+			log.Println("The metrics sender has been stopped")
+			return
+		default:
+		}
+
 		valStr := strconv.FormatFloat(value, 'f', -1, 64)
-		if err := a.sendMetric(model.Gauge, name, valStr); err != nil {
+		if err := a.sendMetric(ctx, model.Gauge, name, valStr); err != nil {
+			if errors.Is(err, context.Canceled) {
+				log.Printf("Sending metric %s canceled\n", name)
+				return
+			}
 			log.Printf("Error sending the metric gauge %s: %v\n", name, err)
 		}
 	}
 
 	counterMetrics := getCounterMetrics(&ms, &cs)
 	for name, value := range counterMetrics {
+		select {
+		case <-ctx.Done():
+			log.Println("The metrics sender has been stopped")
+			return
+		default:
+		}
+
 		valStr := strconv.FormatInt(value, 10)
-		if err := a.sendMetric(model.Counter, name, valStr); err != nil {
+		if err := a.sendMetric(ctx, model.Counter, name, valStr); err != nil {
+			if errors.Is(err, context.Canceled) {
+				log.Printf("Sending metric %s canceled\n", name)
+				return
+			}
 			log.Printf("Error sending the metric counter %s: %v\n", name, err)
 		}
 	}
 }
 
-func (a *Agent) sendMetric(mType, mName, mValue string) error {
+func (a *Agent) sendMetric(ctx context.Context, mType, mName, mValue string) error {
 	url := fmt.Sprintf("%s/update/%s/%s/%s", a.config.ServerAddress, mType, mName, mValue)
 
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		return fmt.Errorf("request creation error: %w", err)
 	}
