@@ -4,21 +4,15 @@ import (
 	"sync"
 
 	"github.com/iPatrushevSergey/metrics/internal/model"
+	"github.com/iPatrushevSergey/metrics/internal/repository"
 )
-
-type MetricRepository interface {
-	GetByName(name string) (model.Metric, bool)
-	GetAll() map[string]model.Metric
-	Update(name string, metric model.Metric)
-	Create(name string, metric model.Metric)
-}
 
 type MemStorageMetricRepository struct {
 	mu sync.RWMutex
 	DB map[string]model.Metric
 }
 
-func NewMemStorageMetricRepository() MetricRepository {
+func NewMemStorageMetricRepository() repository.MetricRepository {
 	return &MemStorageMetricRepository{
 		DB: make(map[string]model.Metric),
 	}
