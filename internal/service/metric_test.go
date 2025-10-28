@@ -25,13 +25,13 @@ func TestMetricServiceGet(t *testing.T) {
 	metricService := NewMetricService(typedRepo)
 
 	t.Run("success get metric", func(t *testing.T) {
-		metric, err := metricService.Get("gauge")
+		metric, err := metricService.Get("gauge", "gauge")
 		require.NoError(t, err)
-		assert.Equal(t, floatp(10.5), metric.Value)
+		assert.Equal(t, "10.5", metric)
 	})
 
 	t.Run("error metric not found", func(t *testing.T) {
-		_, err := metricService.Get("nonexistent")
+		_, err := metricService.Get("counter", "nonexistent")
 		require.Error(t, err)
 		assert.EqualError(t, err, "metric not found")
 	})
@@ -50,10 +50,24 @@ func TestMetricServiceGetAll(t *testing.T) {
 
 		metricService := NewMetricService(typedRepo)
 
-		allMetrics := metricService.GetAll()
-		assert.Equal(t, 2, len(allMetrics))
-		assert.Contains(t, allMetrics, "gauge")
-		assert.Contains(t, allMetrics, "counter")
+		allMetrics, err := metricService.GetAll()
+		require.NoError(t, err)
+		assert.Equal(t, 2, len(allMetrics.Metrics))
+
+		foundNames := make(map[string]struct{})
+		for _, m := range allMetrics.Metrics {
+			foundNames[m.Name] = struct{}{}
+
+			switch m.Name {
+			case "gauge":
+				assert.Equal(t, "10.5", m.Value)
+			case "counter":
+				assert.Equal(t, "50", m.Value)
+			}
+		}
+
+		assert.Contains(t, foundNames, "gauge")
+		assert.Contains(t, foundNames, "counter")
 	})
 
 	t.Run("get empty metrics map", func(t *testing.T) {
@@ -65,7 +79,8 @@ func TestMetricServiceGetAll(t *testing.T) {
 
 		metricService := NewMetricService(typedRepo)
 
-		allMetrics := metricService.GetAll()
+		allMetrics, err := metricService.GetAll()
+		require.NoError(t, err)
 		assert.Empty(t, allMetrics)
 	})
 }
@@ -81,15 +96,15 @@ func TestMetricServiceUpdate(t *testing.T) {
 		initialState map[string]model.Metric
 		metricType   string
 		metricName   string
-		metricValue  any
+		metricValue  string
 		want         want
 	}{
 		{
 			name:         "create Gauge",
 			initialState: map[string]model.Metric{},
 			metricType:   model.Gauge,
-			metricName:   "newGauge",
-			metricValue:  float64(10.3),
+			metricName:   "gauge",
+			metricValue:  "10.3",
 			want: want{
 				metric: model.Metric{MType: model.Gauge, Value: floatp(10.3)},
 				exists: true,
@@ -98,11 +113,11 @@ func TestMetricServiceUpdate(t *testing.T) {
 		{
 			name: "update Gauge",
 			initialState: map[string]model.Metric{
-				"existingGauge": {ID: "uuid1", MType: model.Gauge, Value: floatp(9.1)},
+				"existing_gauge": {ID: "uuid1", MType: model.Gauge, Value: floatp(9.1)},
 			},
 			metricType:  model.Gauge,
-			metricName:  "existingGauge",
-			metricValue: float64(2.1),
+			metricName:  "existing_gauge",
+			metricValue: "2.1",
 			want: want{
 				metric: model.Metric{ID: "uuid1", MType: model.Gauge, Value: floatp(2.1)},
 				exists: true,
@@ -112,8 +127,8 @@ func TestMetricServiceUpdate(t *testing.T) {
 			name:         "create Counter",
 			initialState: map[string]model.Metric{},
 			metricType:   model.Counter,
-			metricName:   "newCounter",
-			metricValue:  int64(10),
+			metricName:   "new_counter",
+			metricValue:  "10",
 			want: want{
 				metric: model.Metric{MType: model.Counter, Delta: intp(10)},
 				exists: true,
@@ -122,11 +137,11 @@ func TestMetricServiceUpdate(t *testing.T) {
 		{
 			name: "update Counter",
 			initialState: map[string]model.Metric{
-				"existingCounter": {ID: "uuid1", MType: model.Counter, Delta: intp(10)},
+				"existing_counter": {ID: "uuid1", MType: model.Counter, Delta: intp(10)},
 			},
 			metricType:  model.Counter,
-			metricName:  "existingCounter",
-			metricValue: int64(10),
+			metricName:  "existing_counter",
+			metricValue: "10",
 			want: want{
 				metric: model.Metric{ID: "uuid1", MType: model.Counter, Delta: intp(20)},
 				exists: true,
