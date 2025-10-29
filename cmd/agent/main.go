@@ -7,25 +7,20 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/iPatrushevSergey/metrics/internal/agent"
 	"github.com/iPatrushevSergey/metrics/internal/config"
 )
 
 func main() {
-	flags, err := config.AgentParseFlags()
+	cfg, err := config.LoadAgentConfig()
 	if err != nil {
-		log.Fatalf("error parsing flags: %v", err)
+		log.Fatalf("error load config: %v", err)
+		return
 	}
-	log.Printf("Starting agent with options: %+v\n", flags)
 
-	cfg := agent.Config{
-		PollInterval:   time.Duration(flags.PollInterval) * time.Second,
-		ReportInterval: time.Duration(flags.ReportInterval) * time.Second,
-		ServerAddress:  "http://" + flags.NetAddress.String(),
-	}
-	log.Println("Running server on", cfg.ServerAddress)
+	log.Printf("Starting agent with config: %+v\n", cfg)
+	log.Println("Sending metrics to the server", cfg.Address)
 
 	a := agent.NewAgent(cfg)
 
