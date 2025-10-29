@@ -13,14 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
-
-type Config struct {
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	ServerAddress  string
-}
 
 type CustomStats struct {
 	PollCount   int64
@@ -28,7 +23,7 @@ type CustomStats struct {
 }
 
 type Agent struct {
-	config Config
+	config config.AgentConfig
 	client *http.Client
 	mu     sync.RWMutex // The pattern "Critical Section"
 
@@ -38,7 +33,7 @@ type Agent struct {
 }
 
 // The pattern "Constructor"
-func NewAgent(config Config) *Agent {
+func NewAgent(config config.AgentConfig) *Agent {
 	return &Agent{
 		config: config,
 		client: &http.Client{Timeout: 2 * time.Second},
@@ -134,7 +129,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 }
 
 func (a *Agent) sendMetric(ctx context.Context, mType, mName, mValue string) error {
-	url := fmt.Sprintf("%s/update/%s/%s/%s", a.config.ServerAddress, mType, mName, mValue)
+	url := fmt.Sprintf("%s/update/%s/%s/%s", a.config.Address, mType, mName, mValue)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
