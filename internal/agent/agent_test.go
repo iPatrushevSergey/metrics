@@ -12,14 +12,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
 
 func TestNewAgent(t *testing.T) {
-	expectedConfig := Config{
+	expectedConfig := config.AgentConfig{
 		PollInterval:   3,
 		ReportInterval: 6,
-		ServerAddress:  "http:127.0.0.1:8080",
+		Address:        "http//:127.0.0.1:8080",
 	}
 
 	agent := NewAgent(expectedConfig)
@@ -52,7 +53,7 @@ func TestNewAgent(t *testing.T) {
 
 func TestPollMetrics(t *testing.T) {
 	testPollInterval := 10 * time.Millisecond
-	testConfig := Config{
+	testConfig := config.AgentConfig{
 		PollInterval: testPollInterval,
 	}
 	agent := NewAgent(testConfig)
@@ -156,7 +157,7 @@ func TestSendMetric(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			agent := NewAgent(Config{ServerAddress: ts.URL})
+			agent := NewAgent(config.AgentConfig{Address: ts.URL})
 			err := agent.sendMetric(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
 
 			if tt.wantError {
