@@ -20,11 +20,13 @@ import (
 )
 
 func main() {
-	flags, err := config.ServerParseFlags()
+	cfg, err := config.LoadServerConfig()
 	if err != nil {
-		log.Fatalf("error parsing flags: %v", err)
+		log.Fatalf("error load config: %v", err)
+		return
 	}
-	log.Printf("Starting server with options: %+v\n", flags)
+
+	log.Printf("Starting server with config: %+v\n", cfg)
 
 	repo := inmemory.NewMemStorageMetricRepository()
 	metricService := service.NewMetricService(repo)
@@ -37,7 +39,7 @@ func main() {
 	router.GET("/value/:type/:name", metricHandler.Get)
 
 	server := &http.Server{
-		Addr:    flags.NetAddress.String(),
+		Addr:    cfg.Address,
 		Handler: router,
 	}
 
