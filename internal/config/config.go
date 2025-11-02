@@ -122,7 +122,7 @@ func LoadServerConfig() (ServerConfig, error) {
 	// Default
 	cfg.Address = Address{Host: "127.0.0.1", Port: 8080}
 	fs.Var(&cfg.Address, "a", "server address (default '127.0.0.1:8080')")
-	fs.StringVar(&cfg.LogLevel, "l", "error", "logging level (default 'error')")
+	fs.StringVar(&cfg.LogLevel, "l", "info", "logging level (default 'info')")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
