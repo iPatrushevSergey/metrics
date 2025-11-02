@@ -2,14 +2,15 @@ package handler
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 
 	"html/template"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/service"
+	"go.uber.org/zap"
 )
 
 const metricsHTMLTemplate = `
@@ -47,7 +48,7 @@ func (h *MetricHandler) Get(c *gin.Context) {
 		} else if errors.Is(err, service.ErrBadMetricType) {
 			c.String(http.StatusBadRequest, err.Error())
 		} else {
-			log.Printf("Internal server error in Get: %v", err)
+			logger.Log.Error("Internal server error in Get", zap.Error(err))
 			c.String(http.StatusInternalServerError, service.ErrInternal.Error())
 		}
 		return
@@ -59,7 +60,7 @@ func (h *MetricHandler) Get(c *gin.Context) {
 func (h *MetricHandler) GetAll(c *gin.Context) {
 	metrics, err := h.metricService.GetAll()
 	if err != nil {
-		log.Printf("Internal server error in GetAll: %v", err)
+		logger.Log.Error("Internal server error in GetAll", zap.Error(err))
 		c.String(http.StatusInternalServerError, "Failed to get metrics")
 		return
 	}
@@ -68,7 +69,7 @@ func (h *MetricHandler) GetAll(c *gin.Context) {
 
 	err = metricsTemplate.Execute(c.Writer, metrics)
 	if err != nil {
-		log.Printf("Internal server error rendering template: %v", err)
+		logger.Log.Error("Internal server error rendering template", zap.Error(err))
 		c.String(http.StatusInternalServerError, "Failed to render page")
 	}
 }
@@ -90,7 +91,7 @@ func (h *MetricHandler) Update(c *gin.Context) {
 		if errors.Is(err, service.ErrBadMetricType) || errors.Is(err, service.ErrBadMetricValue) {
 			c.String(http.StatusBadRequest, err.Error())
 		} else {
-			log.Printf("Internal server error in Update: %v", err)
+			logger.Log.Error("Internal server error in Update", zap.Error(err))
 			c.String(http.StatusInternalServerError, service.ErrInternal.Error())
 		}
 		return
