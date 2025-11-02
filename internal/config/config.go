@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v6"
+	"go.uber.org/zap/zapcore"
 )
 
 // === Custom Flag Type ===
@@ -97,11 +98,19 @@ func LoadAgentConfig() (AgentConfig, error) {
 
 // ServerConfig - the final configuration structure for the server.
 type ServerConfig struct {
-	Address string
+	Address  string
+	LogLevel string
+}
+
+func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("address", c.Address)
+	enc.AddString("level", c.LogLevel)
+	return nil
 }
 
 type serverInternalConfig struct {
-	Address Address `env:"ADDRESS"`
+	Address  Address `env:"ADDRESS"`
+	LogLevel string  `env:"LOG_LEVEL"`
 }
 
 // Environment variables take precedence over flags.
@@ -113,6 +122,7 @@ func LoadServerConfig() (ServerConfig, error) {
 	// Default
 	cfg.Address = Address{Host: "127.0.0.1", Port: 8080}
 	fs.Var(&cfg.Address, "a", "server address (default '127.0.0.1:8080')")
+	fs.StringVar(&cfg.LogLevel, "l", "error", "logging level (default 'error')")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -125,7 +135,8 @@ func LoadServerConfig() (ServerConfig, error) {
 	}
 
 	finalCfg := ServerConfig{
-		Address: cfg.Address.String(),
+		Address:  cfg.Address.String(),
+		LogLevel: cfg.LogLevel,
 	}
 
 	return finalCfg, nil
