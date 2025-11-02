@@ -3,14 +3,15 @@ package service
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository"
+	"go.uber.org/zap"
 )
 
 var (
@@ -97,7 +98,7 @@ func (s *MetricsService) GetAll() (responseMetrics, error) {
 	for _, key := range keys {
 		value, err := formatMetricToStr(metrics[key])
 		if err != nil {
-			log.Printf("error formatting metric %s: %v", key, err)
+			logger.Log.Error("error formatting metric", zap.String("key", key), zap.Error(err))
 			continue
 		}
 		data.Metrics = append(data.Metrics, templateData{Name: key, Value: value})
