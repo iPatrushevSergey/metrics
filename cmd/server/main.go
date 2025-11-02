@@ -11,28 +11,40 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 )
 
 func main() {
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
-		log.Fatalf("error load config: %v", err)
+		log.Fatalf("error load config: %v", cfg)
 		return
 	}
 
-	log.Printf("Starting server with config: %+v\n", cfg)
+	initializedLogger, err := logger.Initialize(cfg.LogLevel)
+	if err != nil {
+		log.Fatalf("error initialize logger: %v", err)
+		return
+	}
+	defer initializedLogger.Sync()
+
+	logger.Log.Info("starting server with config", zap.Object("cfg deatils", &cfg))
 
 	repo := inmemory.NewMemStorageMetricRepository()
 	metricService := service.NewMetricService(repo)
 	metricHandler := handler.NewMetricHandler(metricService)
 
-	router := gin.Default()
+	router := gin.New()
+
+	router.Use(gin.Recovery())
+	router.Use(logger.ZapLogger())
 
 	router.GET("/", metricHandler.GetAll)
 	router.POST("/update/:type/:name/:value", metricHandler.Update)
@@ -44,9 +56,8 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Starting server, address: %s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("Server failed to start, error: %v", err)
+			logger.Log.Error("Server failed to start", zap.Error(err))
 			os.Exit(1)
 		}
 	}()
@@ -54,16 +65,16 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("The completion signal has been received, starting the stop...")
+	logger.Log.Info("The completion signal has been received, starting the stop...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	log.Println("Shutting down server...")
+	logger.Log.Info("Shutting down server...")
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server shutdown failed, error: %v", err)
+		logger.Log.Error("Server shutdown failed", zap.Error(err))
 		os.Exit(1)
 	}
 
-	log.Println("Server stopped gracefully")
+	logger.Log.Info("Server stopped gracefully")
 }
