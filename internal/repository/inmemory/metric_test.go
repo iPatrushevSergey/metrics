@@ -21,13 +21,13 @@ func TestMemStorageMetricRepository(t *testing.T) {
 		mValue := 123.5
 
 		createMetric := model.Metric{
-			ID:    "testID",
+			ID:    mName,
 			MType: model.Gauge,
 			Value: &mValue,
 		}
-		repo.Create(mName, createMetric)
+		repo.Create(createMetric)
 
-		repoMetric, exists := repo.GetByName(mName)
+		repoMetric, exists := repo.GetByID(mName)
 		require.True(t, exists)
 		assert.Equal(t, createMetric, repoMetric)
 	})
@@ -40,20 +40,20 @@ func TestMemStorageMetricRepository(t *testing.T) {
 		mDelta2 := int64(100)
 
 		createMetric := model.Metric{
-			ID:    "testID",
+			ID:    mName,
 			MType: model.Counter,
 			Delta: &mDelta1,
 		}
-		repo.Create(mName, createMetric)
+		repo.Create(createMetric)
 
 		updateMetric := model.Metric{
-			ID:    "id",
+			ID:    mName,
 			MType: model.Counter,
 			Delta: &mDelta2,
 		}
 		repo.Update(mName, updateMetric)
 
-		repoMetric, exists := repo.GetByName(mName)
+		repoMetric, exists := repo.GetByID(mName)
 		require.True(t, exists)
 		assert.Equal(t, updateMetric, repoMetric)
 	})
@@ -61,7 +61,7 @@ func TestMemStorageMetricRepository(t *testing.T) {
 	t.Run("get non-existent metric", func(t *testing.T) {
 		repo := NewMemStorageMetricRepository()
 
-		_, exists := repo.GetByName("nonexistent")
+		_, exists := repo.GetByID("nonexistent")
 		assert.False(t, exists)
 	})
 
@@ -102,11 +102,11 @@ func TestMemStorageMetricRepository(t *testing.T) {
 				gaugeValue := 12.5
 				counterValue := int64(15)
 
-				repo.Create(gaugeName, model.Metric{Value: &gaugeValue})
-				repo.Create(counterName, model.Metric{Delta: &counterValue})
+				repo.Create(model.Metric{ID: gaugeName, Value: &gaugeValue})
+				repo.Create(model.Metric{ID: counterName, Delta: &counterValue})
 
-				_, _ = repo.GetByName(gaugeName)
-				_, _ = repo.GetByName(counterName)
+				_, _ = repo.GetByID(gaugeName)
+				_, _ = repo.GetByID(counterName)
 			}()
 		}
 		wg.Wait()
