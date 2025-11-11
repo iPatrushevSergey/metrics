@@ -13,6 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	gojson "github.com/goccy/go-json"
+
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
@@ -21,21 +23,29 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 )
 
+type GinJSONSerializer struct{}
+
+func (g *GinJSONSerializer) Serialize(c *gin.Context, data interface{}) ([]byte, error) {
+	return gojson.Marshal(data)
+}
+
+func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface{}) error {
+	return gojson.Unmarshal(data, v)
+}
+
 func main() {
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
-		log.Fatalf("error load config: %v", cfg)
-		return
+		log.Fatalf("error load config: %v\n%v", cfg, err)
 	}
 
 	initializedLogger, err := logger.Initialize(cfg.LogLevel)
 	if err != nil {
 		log.Fatalf("error initialize logger: %v", err)
-		return
 	}
 	defer initializedLogger.Sync()
 
-	logger.Log.Info("starting server with config", zap.Object("cfg deatils", &cfg))
+	logger.Log.Info("starting server with config", zap.Object("cfg details", &cfg))
 
 	repo := inmemory.NewMemStorageMetricRepository()
 	metricService := service.NewMetricService(repo)
@@ -43,12 +53,18 @@ func main() {
 
 	router := gin.New()
 
+	router.Use(func(c *gin.Context) {
+		c.Set("json.Serializer", &GinJSONSerializer{})
+		c.Next()
+	})
 	router.Use(gin.Recovery())
 	router.Use(logger.ZapLogger())
 
 	router.GET("/", metricHandler.GetAll)
+	router.POST("/update", metricHandler.UpdateJSON)
+	router.POST("/value", metricHandler.GetJSON)
 	router.POST("/update/:type/:name/:value", metricHandler.Update)
-	router.GET("/value/:type/:name", metricHandler.Get)
+	router.GET("/value/:type/:name", metricHandler.GetValue)
 
 	server := &http.Server{
 		Addr:    cfg.Address,
