@@ -1,7 +1,9 @@
 package agent
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -9,11 +11,11 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
 
@@ -98,8 +100,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 		default:
 		}
 
-		valStr := strconv.FormatFloat(value, 'f', -1, 64)
-		if err := a.sendMetric(ctx, model.Gauge, name, valStr); err != nil {
+		if err := a.sendMetric(ctx, model.Gauge, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Printf("Sending metric %s canceled\n", name)
 				return
@@ -117,8 +118,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 		default:
 		}
 
-		valStr := strconv.FormatInt(value, 10)
-		if err := a.sendMetric(ctx, model.Counter, name, valStr); err != nil {
+		if err := a.sendMetric(ctx, model.Counter, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Printf("Sending metric %s canceled\n", name)
 				return
@@ -128,22 +128,50 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 	}
 }
 
-func (a *Agent) sendMetric(ctx context.Context, mType, mName, mValue string) error {
-	url := fmt.Sprintf("%s/update/%s/%s/%s", a.config.Address, mType, mName, mValue)
+func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue interface{}) error {
+	url := fmt.Sprintf("%s/update", a.config.Address)
+	metricDTO := handler.MetricDTO{ID: mName, MType: mType}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	// Type definition
+	switch mType {
+	case model.Counter:
+		val, ok := mValue.(int64)
+		if !ok {
+			return fmt.Errorf("invalid value type for Counter metric %s", mName)
+		}
+		metricDTO.Value = &val
+	case model.Gauge:
+		val, ok := mValue.(float64)
+		if !ok {
+			return fmt.Errorf("invalid value type for Gauge metric %s", mName)
+		}
+		metricDTO.Value = &val
+	default:
+		return fmt.Errorf("unknown metric type: %s", mType)
+	}
+
+	// Request body formation
+	bodyBytes, err := json.Marshal(metricDTO)
+	if err != nil {
+		return fmt.Errorf("error marshaling metric body: %w", err)
+	}
+	reqBody := bytes.NewReader(bodyBytes)
+
+	// Request formation
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, reqBody)
 	if err != nil {
 		return fmt.Errorf("request creation error: %w", err)
 	}
+	req.Header.Add("Content-Type", "application/json")
 
-	req.Header.Add("Content-Type", "text/plain")
-
+	// Send request
 	response, err := a.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request sending error: %w", err)
 	}
 	defer response.Body.Close()
 
+	// Response processing
 	if response.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(response.Body)
 		if err != nil {
