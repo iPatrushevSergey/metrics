@@ -25,13 +25,13 @@ func TestMetricServiceGet(t *testing.T) {
 	metricService := NewMetricService(typedRepo)
 
 	t.Run("success get metric", func(t *testing.T) {
-		metric, err := metricService.Get("gauge", "gauge")
+		metric, err := metricService.GetValue("gauge", "gauge")
 		require.NoError(t, err)
 		assert.Equal(t, "10.5", metric)
 	})
 
 	t.Run("error metric not found", func(t *testing.T) {
-		_, err := metricService.Get("counter", "nonexistent")
+		_, err := metricService.GetValue("counter", "nonexistent")
 		require.Error(t, err)
 		assert.EqualError(t, err, "metric not found")
 	})
@@ -160,7 +160,7 @@ func TestMetricServiceUpdate(t *testing.T) {
 			err := service.Update(tt.metricType, tt.metricName, tt.metricValue)
 			require.NoError(t, err)
 
-			resultMetric, exists := mockRepo.GetByName(tt.metricName)
+			resultMetric, exists := mockRepo.GetByID(tt.metricName)
 
 			require.Equal(t, tt.want.exists, exists)
 
