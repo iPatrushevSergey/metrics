@@ -131,7 +131,7 @@ func LoadServerConfig() (ServerConfig, error) {
 
 	// Env
 	if err := env.Parse(&cfg); err != nil {
-		return ServerConfig{}, fmt.Errorf("flag parsing error: %w", err)
+		return ServerConfig{}, fmt.Errorf("ENV parsing error: %w", err)
 	}
 
 	finalCfg := ServerConfig{
