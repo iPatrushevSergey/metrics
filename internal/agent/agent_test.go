@@ -88,7 +88,7 @@ func TestSendMetric(t *testing.T) {
 		name          string
 		metricType    string
 		metricName    string
-		metricValue   string
+		metricValue   interface{}
 		wantCode      int
 		wantErrorBody string
 		wantError     bool
@@ -99,7 +99,7 @@ func TestSendMetric(t *testing.T) {
 			name:          "Success Gauge 200",
 			metricType:    model.Gauge,
 			metricName:    "Alloc",
-			metricValue:   "100.1",
+			metricValue:   100.1,
 			wantCode:      http.StatusOK,
 			wantErrorBody: "",
 			wantError:     false,
@@ -108,7 +108,7 @@ func TestSendMetric(t *testing.T) {
 			name:          "Success Counter 200",
 			metricType:    model.Counter,
 			metricName:    "PollCount",
-			metricValue:   "13",
+			metricValue:   int64(13),
 			wantCode:      http.StatusOK,
 			wantErrorBody: "",
 			wantError:     false,
@@ -117,18 +117,18 @@ func TestSendMetric(t *testing.T) {
 			name:          "Fail Gauge 404 NotFound",
 			metricType:    model.Gauge,
 			metricName:    "UnknownMetric",
-			metricValue:   "1.0",
+			metricValue:   1.0,
 			wantCode:      http.StatusNotFound,
 			wantErrorBody: "Metric not found on server",
 			wantError:     true,
 		},
 		{
-			name:          "Fail 400 BadRequest",
+			name:          "Fail Internal Type Mismatch",
 			metricType:    model.Counter,
 			metricName:    "PollCount",
 			metricValue:   "invalid_value",
-			wantCode:      http.StatusBadRequest,
-			wantErrorBody: "Invalid metric value format",
+			wantCode:      0,
+			wantErrorBody: "invalid value type for Counter metric PollCount",
 			wantError:     true,
 		},
 	}
@@ -136,7 +136,7 @@ func TestSendMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				expectedPath := fmt.Sprintf("/update/%s/%s/%s", tt.metricType, tt.metricName, tt.metricValue)
+				expectedPath := "/update"
 
 				if r.URL.Path != expectedPath {
 					t.Errorf("Handler received wrong path. Got: %s, expected: %s", r.URL.Path, expectedPath)
@@ -146,8 +146,8 @@ func TestSendMetric(t *testing.T) {
 					t.Errorf("Handler received wrong method. Got: %s, expected: POST", r.Method)
 				}
 
-				if r.Header.Get("Content-Type") != "text/plain" {
-					t.Errorf("Handler received wrong Content-Type. Got: %s, expected: text/plain", r.Header.Get("Content-Type"))
+				if r.Header.Get("Content-Type") != "application/json" {
+					t.Errorf("Handler received wrong Content-Type. Got: %s, expected: application/json", r.Header.Get("Content-Type"))
 				}
 
 				w.WriteHeader(tt.wantCode)
@@ -165,14 +165,20 @@ func TestSendMetric(t *testing.T) {
 					t.Fatalf("Expected an error but got nil")
 				}
 
-				expectedStatusText := http.StatusText(tt.wantCode)
-				expectedErrorSubstring := fmt.Sprintf("%d %s", tt.wantCode, expectedStatusText)
+				if tt.wantCode == 0 {
+					if !strings.Contains(err.Error(), tt.wantErrorBody) {
+						t.Errorf("Internal error message mismatch. Got: %s\nExpected: %s", err.Error(), tt.wantErrorBody)
+					}
+				} else {
+					expectedStatusText := http.StatusText(tt.wantCode)
+					expectedErrorSubstring := fmt.Sprintf("%d %s", tt.wantCode, expectedStatusText)
 
-				if !strings.Contains(err.Error(), expectedErrorSubstring) {
-					t.Errorf("Error message mismatch. Got: %s\nExpected: %s", err.Error(), expectedErrorSubstring)
-				}
-				if tt.wantErrorBody != "" && !strings.Contains(err.Error(), tt.wantErrorBody) {
-					t.Errorf("Error message missing body. Got: %s\nExpected: %s", err.Error(), tt.wantErrorBody)
+					if !strings.Contains(err.Error(), expectedErrorSubstring) {
+						t.Errorf("Error message mismatch. Got: %s\nExpected: %s", err.Error(), expectedErrorSubstring)
+					}
+					if tt.wantErrorBody != "" && !strings.Contains(err.Error(), tt.wantErrorBody) {
+						t.Errorf("Error message missing body. Got: %s\nExpected: %s", err.Error(), tt.wantErrorBody)
+					}
 				}
 			} else {
 				if err != nil {
