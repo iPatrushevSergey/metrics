@@ -16,7 +16,6 @@ func main() {
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
 		log.Fatalf("error load config: %v", err)
-		return
 	}
 
 	log.Printf("Starting agent with config: %+v\n", cfg)
