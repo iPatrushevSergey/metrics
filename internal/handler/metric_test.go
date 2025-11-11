@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -100,7 +101,7 @@ func TestMetricHandlerUpdate(t *testing.T) {
 	}
 }
 
-func TestMetricHandlerGet(t *testing.T) {
+func TestMetricHandlerGetValue(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	initialState := map[string]model.Metric{
@@ -156,9 +157,86 @@ func TestMetricHandlerGet(t *testing.T) {
 			metricHandler := NewMetricHandler(metricService)
 
 			router := gin.New()
-			router.GET("/value/:type/:name", metricHandler.Get)
+			router.GET("/value/:type/:name", metricHandler.GetValue)
 
 			request := httptest.NewRequest(http.MethodGet, tt.requestURL, nil)
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, request)
+
+			result := w.Result()
+			defer result.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+
+			bodyBytes, err := io.ReadAll(result.Body)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want.body, string(bodyBytes))
+		})
+	}
+}
+
+func TestMetricHandlerGetJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	initialState := map[string]model.Metric{
+		"gauge":   {ID: "gauge", MType: model.Gauge, Value: floatp(101.1)},
+		"counter": {ID: "counter", MType: model.Counter, Delta: intp(11)},
+		"nil":     {ID: "nil", MType: model.Gauge, Value: nil},
+	}
+
+	type want struct {
+		statusCode int
+		body       string
+	}
+
+	tests := []struct {
+		name string
+		body string
+		want want
+	}{
+		{
+			name: "success get gauge",
+			body: `{"id":"gauge", "type":"gauge"}`,
+			want: want{statusCode: http.StatusOK, body: `{"id":"gauge","type":"gauge","value":101.1}`},
+		},
+		{
+			name: "success get counter",
+			body: `{"id":"counter", "type":"counter"}`,
+			want: want{statusCode: http.StatusOK, body: `{"id":"counter","type":"counter","value":11}`},
+		},
+		{
+			name: "no found metric",
+			body: `{"id":"notfound", "type":"counter"}`,
+			want: want{statusCode: http.StatusNotFound, body: `{"error":"metric not found"}`},
+		},
+		{
+			name: "invalid metric type",
+			body: `{"id":"counter", "type":"notfound"}`,
+			want: want{statusCode: http.StatusBadRequest, body: `{"error":"invalid metric type"}`},
+		},
+		{
+			name: "internal error on nil value",
+			body: `{"id":"nil", "type":"gauge"}`,
+			want: want{statusCode: http.StatusInternalServerError, body: `{"error":"internal service error"}`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := inmemory.NewMemStorageMetricRepository()
+			typedRepo := repo.(*inmemory.MemStorageMetricRepository)
+			typedRepo.DB = initialState
+
+			metricService := service.NewMetricService(typedRepo)
+			metricHandler := NewMetricHandler(metricService)
+
+			router := gin.New()
+			router.POST("/value", metricHandler.GetJSON)
+
+			reqBody := bytes.NewReader([]byte(tt.body))
+
+			request := httptest.NewRequest(http.MethodPost, "/value", reqBody)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, request)
