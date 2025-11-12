@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"bytes"
+	"io"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +33,13 @@ func ZapLogger() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		start := time.Now()
 
+		var bodyBytes []byte
+
+		if ctx.Request.Body != nil && ctx.Request.ContentLength > 0 {
+			bodyBytes, _ = io.ReadAll(ctx.Request.Body)
+			ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}
+
 		ctx.Next()
 
 		duration := time.Since(start)
@@ -43,5 +52,12 @@ func ZapLogger() gin.HandlerFunc {
 			zap.Int("status", ctx.Writer.Status()),
 			zap.Int("size", ctx.Writer.Size()),
 		)
+
+		if len(bodyBytes) > 0 {
+			Log.Info(
+				"Request body logged",
+				zap.String("request_body", string(bodyBytes)),
+			)
+		}
 	}
 }

@@ -63,8 +63,8 @@ func main() {
 	router.GET("/", metricHandler.GetAll)
 	router.POST("/update", metricHandler.UpdateJSON)
 	router.POST("/value", metricHandler.GetJSON)
-	router.POST("/update/:type/:name/:value", metricHandler.Update)
-	router.GET("/value/:type/:name", metricHandler.GetValue)
+	// router.POST("/update/:type/:name/:value", metricHandler.Update)
+	// router.GET("/value/:type/:name", metricHandler.GetValue)
 
 	server := &http.Server{
 		Addr:    cfg.Address,
