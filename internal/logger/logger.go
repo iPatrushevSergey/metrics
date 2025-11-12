@@ -29,16 +29,34 @@ func Initialize(level string) (*zap.Logger, error) {
 	return zl, nil
 }
 
+type responseBodyWriter struct {
+	gin.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (r responseBodyWriter) Write(b []byte) (int, error) {
+	r.body.Write(b)
+	return r.ResponseWriter.Write(b)
+}
+
+func (r responseBodyWriter) WriteString(s string) (int, error) {
+	r.body.WriteString(s)
+	return r.ResponseWriter.WriteString(s)
+}
+
 func ZapLogger() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		start := time.Now()
 
-		var bodyBytes []byte
+		var requestBodyBytes []byte
 
 		if ctx.Request.Body != nil && ctx.Request.ContentLength > 0 {
-			bodyBytes, _ = io.ReadAll(ctx.Request.Body)
-			ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+			requestBodyBytes, _ = io.ReadAll(ctx.Request.Body)
+			ctx.Request.Body = io.NopCloser(bytes.NewBuffer(requestBodyBytes))
 		}
+
+		w := &responseBodyWriter{body: bytes.NewBufferString(""), ResponseWriter: ctx.Writer}
+		ctx.Writer = w
 
 		ctx.Next()
 
@@ -51,13 +69,8 @@ func ZapLogger() gin.HandlerFunc {
 			zap.Duration("duration", duration),
 			zap.Int("status", ctx.Writer.Status()),
 			zap.Int("size", ctx.Writer.Size()),
+			zap.String("request_body", string(requestBodyBytes)),
+			zap.String("response_body", w.body.String()),
 		)
-
-		if len(bodyBytes) > 0 {
-			Log.Info(
-				"Request body logged",
-				zap.String("request_body", string(bodyBytes)),
-			)
-		}
 	}
 }
