@@ -83,8 +83,8 @@ func (s *MetricsService) GetValue(mType, mName string) (string, error) {
 }
 
 func (s *MetricsService) GetMetric(mType, mName string) (model.Metric, error) {
-	// mType = strings.ToLower(mType)
-	// mName = strings.TrimSpace(strings.ToLower(mName))
+	mType = strings.ToLower(mType)
+	mName = strings.TrimSpace(strings.ToLower(mName))
 
 	switch mType {
 	case model.Gauge, model.Counter:
@@ -193,8 +193,8 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 }
 
 func (s *MetricsService) UpdateJSON(metric model.Metric) error {
-	// metric.MType = strings.ToLower(metric.MType)
-	// metric.ID = strings.TrimSpace(strings.ToLower(metric.ID))
+	metric.MType = strings.ToLower(metric.MType)
+	metric.ID = strings.TrimSpace(strings.ToLower(metric.ID))
 
 	metricDB, exists := s.metricRepo.GetByID(metric.ID)
 
