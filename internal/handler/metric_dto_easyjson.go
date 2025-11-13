@@ -43,13 +43,33 @@ func easyjson792c50caDecodeGithubComIPatrushevSergeyMetricsInternalHandler(in *j
 			} else {
 				out.MType = string(in.String())
 			}
-		case "value":
-			if m, ok := out.Value.(easyjson.Unmarshaler); ok {
-				m.UnmarshalEasyJSON(in)
-			} else if m, ok := out.Value.(json.Unmarshaler); ok {
-				_ = m.UnmarshalJSON(in.Raw())
+		case "delta":
+			if in.IsNull() {
+				in.Skip()
+				out.Delta = nil
 			} else {
-				out.Value = in.Interface()
+				if out.Delta == nil {
+					out.Delta = new(int64)
+				}
+				if in.IsNull() {
+					in.Skip()
+				} else {
+					*out.Delta = int64(in.Int64())
+				}
+			}
+		case "value":
+			if in.IsNull() {
+				in.Skip()
+				out.Value = nil
+			} else {
+				if out.Value == nil {
+					out.Value = new(float64)
+				}
+				if in.IsNull() {
+					in.Skip()
+				} else {
+					*out.Value = float64(in.Float64())
+				}
 			}
 		case "hash":
 			if in.IsNull() {
@@ -81,16 +101,15 @@ func easyjson792c50caEncodeGithubComIPatrushevSergeyMetricsInternalHandler(out *
 		out.RawString(prefix)
 		out.String(string(in.MType))
 	}
+	if in.Delta != nil {
+		const prefix string = ",\"delta\":"
+		out.RawString(prefix)
+		out.Int64(int64(*in.Delta))
+	}
 	if in.Value != nil {
 		const prefix string = ",\"value\":"
 		out.RawString(prefix)
-		if m, ok := in.Value.(easyjson.Marshaler); ok {
-			m.MarshalEasyJSON(out)
-		} else if m, ok := in.Value.(json.Marshaler); ok {
-			out.Raw(m.MarshalJSON())
-		} else {
-			out.Raw(json.Marshal(in.Value))
-		}
+		out.Float64(float64(*in.Value))
 	}
 	if in.Hash != "" {
 		const prefix string = ",\"hash\":"
