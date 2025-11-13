@@ -6,12 +6,13 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
 
-//go:generate easyjson -all metric.go
+//go:generate easyjson -all $GOFILE
 type MetricDTO struct {
-	ID    string      `json:"id"`
-	MType string      `json:"type"`
-	Value interface{} `json:"value,omitempty"`
-	Hash  string      `json:"hash,omitempty"`
+	ID    string   `json:"id"`
+	MType string   `json:"type"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+	Hash  string   `json:"hash,omitempty"`
 }
 
 func modelToDTO(m model.Metric) MetricDTO {
@@ -23,13 +24,9 @@ func modelToDTO(m model.Metric) MetricDTO {
 
 	switch m.MType {
 	case model.Counter:
-		if m.Delta != nil {
-			dto.Value = *m.Delta
-		}
+		dto.Delta = m.Delta
 	case model.Gauge:
-		if m.Value != nil {
-			dto.Value = *m.Value
-		}
+		dto.Value = m.Value
 	}
 	return dto
 }
@@ -41,28 +38,13 @@ func dtoToModel(dto MetricDTO) (model.Metric, error) {
 		Hash:  dto.Hash,
 	}
 
-	if dto.Value == nil {
-		return model.Metric{}, errors.New("the value cannot be empty")
-	}
-
 	switch dto.MType {
 	case model.Counter:
-		f, ok := dto.Value.(float64)
-		if !ok {
-			return model.Metric{}, errors.New("invalid type for counter value: expected number")
-		}
-		v := int64(f)
-		m.Delta = &v
-
+		m.Delta = dto.Delta
 	case model.Gauge:
-		f, ok := dto.Value.(float64)
-		if !ok {
-			return model.Metric{}, errors.New("invalid type for gauge value: expected number")
-		}
-		m.Value = &f
-
+		m.Value = dto.Value
 	default:
-		return model.Metric{}, errors.New("unknown metric type")
+		return model.Metric{}, errors.New("unknown type of metric")
 	}
 	return m, nil
 }
