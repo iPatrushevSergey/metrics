@@ -203,7 +203,7 @@ func TestMetricHandlerGetJSON(t *testing.T) {
 		{
 			name: "success get counter",
 			body: `{"id":"counter", "type":"counter"}`,
-			want: want{statusCode: http.StatusOK, body: `{"id":"counter","type":"counter","value":11}`},
+			want: want{statusCode: http.StatusOK, body: `{"id":"counter","type":"counter","delta":11}`},
 		},
 		{
 			name: "no found metric",
