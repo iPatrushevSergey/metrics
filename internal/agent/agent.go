@@ -139,7 +139,7 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 		if !ok {
 			return fmt.Errorf("invalid value type for Counter metric %s", mName)
 		}
-		metricDTO.Value = &val
+		metricDTO.Delta = &val
 	case model.Gauge:
 		val, ok := mValue.(float64)
 		if !ok {
