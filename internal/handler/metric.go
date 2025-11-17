@@ -108,6 +108,7 @@ func (h *MetricHandler) GetAll(c *gin.Context) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
 
 	err = metricsTemplate.Execute(c.Writer, metrics)
+
 	if err != nil {
 		logger.Log.Error("Internal server error rendering template", zap.Error(err))
 		c.String(http.StatusInternalServerError, "Failed to render page")

@@ -69,6 +69,10 @@ func ZapLogger() gin.HandlerFunc {
 			zap.Duration("duration", duration),
 			zap.Int("status", ctx.Writer.Status()),
 			zap.Int("size", ctx.Writer.Size()),
+		)
+
+		Log.Debug(
+			"HTTP Request and Response body",
 			zap.String("request_body", string(requestBodyBytes)),
 			zap.String("response_body", w.body.String()),
 		)
