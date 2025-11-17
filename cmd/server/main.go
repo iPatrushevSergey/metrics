@@ -15,12 +15,13 @@ import (
 
 	gojson "github.com/goccy/go-json"
 
+	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
+
+	"github.com/iPatrushevSergey/metrics/internal/middleware"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
-
-	"github.com/iPatrushevSergey/metrics/internal/config"
-	"github.com/iPatrushevSergey/metrics/internal/logger"
 )
 
 type GinJSONSerializer struct{}
@@ -53,12 +54,13 @@ func main() {
 
 	router := gin.New()
 
+	router.Use(gin.Recovery())
+	router.Use(middleware.GzipGinMiddleware())
+	router.Use(logger.ZapLogger())
 	router.Use(func(c *gin.Context) {
 		c.Set("json.Serializer", &GinJSONSerializer{})
 		c.Next()
 	})
-	router.Use(gin.Recovery())
-	router.Use(logger.ZapLogger())
 
 	router.GET("/", metricHandler.GetAll)
 	router.POST("/update", metricHandler.UpdateJSON)
