@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -155,14 +156,24 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 	if err != nil {
 		return fmt.Errorf("error marshaling metric body: %w", err)
 	}
-	reqBody := bytes.NewReader(bodyBytes)
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(bodyBytes); err != nil {
+		return fmt.Errorf("error compressing body: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("error closing gzip writer: %w", err)
+	}
 
 	// Request formation
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, reqBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
 	if err != nil {
 		return fmt.Errorf("request creation error: %w", err)
 	}
 	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Accept-Encoding", "gzip")
 
 	// Send request
 	response, err := a.client.Do(req)
@@ -171,9 +182,22 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 	}
 	defer response.Body.Close()
 
+	// Unpacking
+	var reader io.ReadCloser
+	switch response.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(response.Body)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip reader for response: %w", err)
+		}
+		defer reader.Close()
+	default:
+		reader = response.Body
+	}
+
 	// Response processing
 	if response.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(response.Body)
+		body, err := io.ReadAll(reader)
 		if err != nil {
 			log.Printf("Error reading the response body: %v\n", err)
 		}
