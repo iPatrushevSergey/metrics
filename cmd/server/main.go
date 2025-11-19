@@ -16,6 +16,7 @@ import (
 	gojson "github.com/goccy/go-json"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 
@@ -49,11 +50,44 @@ func main() {
 	logger.Log.Info("starting server with config", zap.Object("cfg details", &cfg))
 
 	repo := inmemory.NewMemStorageMetricRepository()
-	metricService := service.NewMetricService(repo)
+	fs := filestorage.NewFileStorage(cfg.FileStoragePath)
+
+	if cfg.Restore {
+		logger.Log.Info("Restoring metrics from file", zap.String("path", cfg.FileStoragePath))
+		restoredMetrics, err := fs.Load()
+		if err != nil {
+			logger.Log.Error("Failed to restore metrics", zap.Error(err))
+		} else {
+			for _, m := range restoredMetrics {
+				repo.Create(m)
+			}
+			logger.Log.Info("Metrics restored successfully", zap.Int("count", len(restoredMetrics)))
+		}
+
+	}
+
+	metricService := service.NewMetricService(repo, fs, cfg.StoreInterval)
 	metricHandler := handler.NewMetricHandler(metricService)
 
-	router := gin.New()
+	if cfg.StoreInterval > 0 {
+		go func() {
+			ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
+			defer ticker.Stop()
 
+			logger.Log.Info("Starting periodic metric saver", zap.Int("interval_sec", cfg.StoreInterval))
+
+			for range ticker.C {
+				allMetrics := repo.GetAll()
+				if err := fs.Save(allMetrics); err != nil {
+					logger.Log.Error("Failed to save metrics to file", zap.Error(err))
+				} else {
+					logger.Log.Info("Metrics saved to file")
+				}
+			}
+		}()
+	}
+
+	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.GzipGinMiddleware())
 	router.Use(logger.ZapLogger())
@@ -87,6 +121,11 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	logger.Log.Info("Saving metrics before shutdown...")
+	if err := fs.Save(repo.GetAll()); err != nil {
+		logger.Log.Error("Failed to save metrics on shutdown", zap.Error(err))
+	}
 
 	logger.Log.Info("Shutting down server...")
 	if err := server.Shutdown(ctx); err != nil {
