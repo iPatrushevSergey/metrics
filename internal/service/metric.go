@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository"
@@ -47,11 +48,30 @@ func formatMetricToStr(metric model.Metric) (string, error) {
 }
 
 type MetricsService struct {
-	metricRepo repository.MetricRepository
+	metricRepo    repository.MetricRepository
+	fileStorage   *filestorage.FileStorage
+	storeInterval int
 }
 
-func NewMetricService(repo repository.MetricRepository) *MetricsService {
-	return &MetricsService{metricRepo: repo}
+func NewMetricService(
+	repo repository.MetricRepository,
+	fs *filestorage.FileStorage,
+	storeInterval int,
+) *MetricsService {
+	return &MetricsService{
+		metricRepo:    repo,
+		fileStorage:   fs,
+		storeInterval: storeInterval,
+	}
+}
+
+func (s *MetricsService) saveSynchronously() {
+	if s.storeInterval == 0 {
+		metrics := s.metricRepo.GetAll()
+		if err := s.fileStorage.Save(metrics); err != nil {
+			logger.Log.Error("failed to sync save metrics to file", zap.Error(err))
+		}
+	}
 }
 
 func (s *MetricsService) GetValue(mType, mName string) (string, error) {
@@ -179,6 +199,7 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 			metric.Delta = &v
 		}
 		s.metricRepo.Create(metric)
+		s.saveSynchronously()
 		return nil
 	}
 
@@ -189,6 +210,7 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 		*metric.Delta += v
 	}
 	s.metricRepo.Update(mName, metric)
+	s.saveSynchronously()
 	return nil
 }
 
@@ -202,6 +224,7 @@ func (s *MetricsService) UpdateJSON(metric model.Metric) error {
 	// This implementation is similar to upsert
 	if !exists {
 		s.metricRepo.Create(metric)
+		s.saveSynchronously()
 		return nil
 	}
 
@@ -213,5 +236,6 @@ func (s *MetricsService) UpdateJSON(metric model.Metric) error {
 	}
 
 	s.metricRepo.Update(metricDB.ID, metricDB)
+	s.saveSynchronously()
 	return nil
 }
