@@ -98,19 +98,28 @@ func LoadAgentConfig() (AgentConfig, error) {
 
 // ServerConfig - the final configuration structure for the server.
 type ServerConfig struct {
-	Address  string
-	LogLevel string
+	Address         string
+	LogLevel        string
+	StoreInterval   int
+	FileStoragePath string
+	Restore         bool
 }
 
 func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("address", c.Address)
 	enc.AddString("level", c.LogLevel)
+	enc.AddInt("interval", c.StoreInterval)
+	enc.AddString("storage_path", c.FileStoragePath)
+	enc.AddBool("restore", c.Restore)
 	return nil
 }
 
 type serverInternalConfig struct {
-	Address  Address `env:"ADDRESS"`
-	LogLevel string  `env:"LOG_LEVEL"`
+	Address         Address `env:"ADDRESS"`
+	LogLevel        string  `env:"LOG_LEVEL"`
+	StoreInterval   int     `env:"STORE_INTERVAL"`
+	FileStoragePath string  `env:"FILE_STORAGE_PATH"`
+	Restore         bool    `env:"RESTORE"`
 }
 
 // Environment variables take precedence over flags.
@@ -123,6 +132,9 @@ func LoadServerConfig() (ServerConfig, error) {
 	cfg.Address = Address{Host: "127.0.0.1", Port: 8080}
 	fs.Var(&cfg.Address, "a", "server address (default '127.0.0.1:8080')")
 	fs.StringVar(&cfg.LogLevel, "l", "info", "logging level (default 'info')")
+	fs.IntVar(&cfg.StoreInterval, "i", 300, "server data save interval (seconds)")
+	fs.StringVar(&cfg.FileStoragePath, "f", "metrics.json", "file path (default 'metrics.json')")
+	fs.BoolVar(&cfg.Restore, "r", true, "load data from file at startup")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -135,8 +147,11 @@ func LoadServerConfig() (ServerConfig, error) {
 	}
 
 	finalCfg := ServerConfig{
-		Address:  cfg.Address.String(),
-		LogLevel: cfg.LogLevel,
+		Address:         cfg.Address.String(),
+		LogLevel:        cfg.LogLevel,
+		StoreInterval:   cfg.StoreInterval,
+		FileStoragePath: cfg.FileStoragePath,
+		Restore:         cfg.Restore,
 	}
 
 	return finalCfg, nil
