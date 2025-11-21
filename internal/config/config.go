@@ -4,6 +4,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -23,24 +25,37 @@ type Address struct {
 
 // String implements the interface flag.Value
 func (a *Address) String() string {
-	if a.Host == "" && a.Port == 0 {
-		return ""
-	}
 	return fmt.Sprintf("%s:%d", a.Host, a.Port)
 }
 
 // Set implements the interface flag.Value
 func (a *Address) Set(s string) error {
-	hp := strings.Split(s, ":")
-	if len(hp) != 2 {
-		return errors.New("need address in a form 'host:port'")
+	if !(strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")) {
+		s = "http://" + s
 	}
-	port, err := strconv.Atoi(hp[1])
+
+	u, err := url.Parse(s)
+	if err != nil {
+		return fmt.Errorf("invalid address format: %w", err)
+	}
+
+	if u.Host == "" {
+		return errors.New("host is empty")
+	}
+
+	hostName, portStr, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return err
+	}
+
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return fmt.Errorf("invalid port: %w", err)
 	}
-	a.Host = hp[0]
+
+	a.Host = u.Scheme + "://" + hostName
 	a.Port = port
+
 	return nil
 }
 
@@ -70,7 +85,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 	fs := flag.NewFlagSet("agent", flag.ContinueOnError)
 
 	// Default
-	cfg.Address = Address{Host: "127.0.0.1", Port: 8080}
+	cfg.Address = Address{Host: "http://127.0.0.1", Port: 8080}
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.DurationVar(&cfg.ReportInterval, "r", 10*time.Second, "frequency of sending metrics")
 	fs.DurationVar(&cfg.PollInterval, "p", 2*time.Second, "frequency of metrics polling")
@@ -86,7 +101,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 	}
 
 	finalCfg := AgentConfig{
-		Address:        "http://" + cfg.Address.String(),
+		Address:        cfg.Address.String(),
 		PollInterval:   cfg.PollInterval,
 		ReportInterval: cfg.ReportInterval,
 	}
