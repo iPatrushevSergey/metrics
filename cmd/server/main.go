@@ -47,13 +47,13 @@ func main() {
 	}
 	defer initializedLogger.Sync()
 
-	logger.Log.Info("starting server with config", zap.Object("cfg details", &cfg))
+	logger.Log.Debug("starting server with config", zap.Object("cfg details", &cfg))
 
 	repo := inmemory.NewMemStorageMetricRepository()
 	fs := filestorage.NewFileStorage(cfg.FileStoragePath)
 
 	if cfg.Restore {
-		logger.Log.Info("Restoring metrics from file", zap.String("path", cfg.FileStoragePath))
+		logger.Log.Debug("Restoring metrics from file", zap.String("path", cfg.FileStoragePath))
 		restoredMetrics, err := fs.Load()
 		if err != nil {
 			logger.Log.Error("Failed to restore metrics", zap.Error(err))
@@ -61,7 +61,7 @@ func main() {
 			for _, m := range restoredMetrics {
 				repo.Create(m)
 			}
-			logger.Log.Info("Metrics restored successfully", zap.Int("count", len(restoredMetrics)))
+			logger.Log.Debug("Metrics restored successfully", zap.Int("count", len(restoredMetrics)))
 		}
 
 	}
@@ -74,14 +74,14 @@ func main() {
 			ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
 			defer ticker.Stop()
 
-			logger.Log.Info("Starting periodic metric saver", zap.Int("interval_sec", cfg.StoreInterval))
+			logger.Log.Debug("Starting periodic metric saver", zap.Int("interval_sec", cfg.StoreInterval))
 
 			for range ticker.C {
 				allMetrics := repo.GetAll()
 				if err := fs.Save(allMetrics); err != nil {
 					logger.Log.Error("Failed to save metrics to file", zap.Error(err))
 				} else {
-					logger.Log.Info("Metrics saved to file")
+					logger.Log.Debug("Metrics saved to file")
 				}
 			}
 		}()
@@ -117,21 +117,21 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logger.Log.Info("The completion signal has been received, starting the stop...")
+	logger.Log.Debug("The completion signal has been received, starting the stop...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	logger.Log.Info("Saving metrics before shutdown...")
+	logger.Log.Debug("Saving metrics before shutdown...")
 	if err := fs.Save(repo.GetAll()); err != nil {
 		logger.Log.Error("Failed to save metrics on shutdown", zap.Error(err))
 	}
 
-	logger.Log.Info("Shutting down server...")
+	logger.Log.Debug("Shutting down server...")
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Log.Error("Server shutdown failed", zap.Error(err))
 		os.Exit(1)
 	}
 
-	logger.Log.Info("Server stopped gracefully")
+	logger.Log.Debug("Server stopped gracefully")
 }
