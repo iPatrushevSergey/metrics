@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
@@ -50,13 +51,13 @@ func formatMetricToStr(metric model.Metric) (string, error) {
 type MetricsService struct {
 	metricRepo    repository.MetricRepository
 	fileStorage   *filestorage.FileStorage
-	storeInterval int
+	storeInterval time.Duration
 }
 
 func NewMetricService(
 	repo repository.MetricRepository,
 	fs *filestorage.FileStorage,
-	storeInterval int,
+	storeInterval time.Duration,
 ) *MetricsService {
 	return &MetricsService{
 		metricRepo:    repo,

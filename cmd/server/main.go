@@ -71,10 +71,10 @@ func main() {
 
 	if cfg.StoreInterval > 0 {
 		go func() {
-			ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
+			ticker := time.NewTicker(cfg.StoreInterval)
 			defer ticker.Stop()
 
-			logger.Log.Debug("Starting periodic metric saver", zap.Int("interval_sec", cfg.StoreInterval))
+			logger.Log.Debug("Starting periodic metric saver", zap.Duration("interval_sec", cfg.StoreInterval))
 
 			for range ticker.C {
 				allMetrics := repo.GetAll()
