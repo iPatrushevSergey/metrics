@@ -80,15 +80,7 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 	}
 
 	responseDTO := modelToDTO(metricModel)
-
-	responseBody, err := responseDTO.MarshalJSON()
-	if err != nil {
-		logger.Log.Error("Internal server error in GetJSON", zap.Error(err))
-		c.String(http.StatusInternalServerError, service.ErrInternal.Error())
-		return
-	}
-
-	c.Data(http.StatusOK, "application/json", responseBody)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
 func (h *MetricHandler) GetAll(c *gin.Context) {
