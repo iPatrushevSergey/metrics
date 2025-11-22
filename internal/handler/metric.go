@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strings"
 
@@ -61,13 +61,7 @@ func (h *MetricHandler) GetValue(c *gin.Context) {
 func (h *MetricHandler) GetJSON(c *gin.Context) {
 	var dto MetricDTO
 
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
-		return
-	}
-
-	if err := dto.UnmarshalJSON(body); err != nil {
+	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -142,13 +136,7 @@ func (h *MetricHandler) Update(c *gin.Context) {
 func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 	var dto MetricDTO
 
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
-		return
-	}
-
-	if err := dto.UnmarshalJSON(body); err != nil {
+	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
