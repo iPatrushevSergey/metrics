@@ -19,8 +19,9 @@ import (
 
 // Address - this is a custom flag type for the address 'host:port'.
 type Address struct {
-	Host string
-	Port int
+	Schema string
+	Host   string
+	Port   int
 }
 
 // String implements the interface flag.Value
@@ -53,7 +54,8 @@ func (a *Address) Set(s string) error {
 		return fmt.Errorf("invalid port: %w", err)
 	}
 
-	a.Host = u.Scheme + "://" + hostName
+	a.Schema = u.Scheme
+	a.Host = hostName
 	a.Port = port
 
 	return nil
@@ -61,6 +63,10 @@ func (a *Address) Set(s string) error {
 
 func (a *Address) UnmarshalText(text []byte) error {
 	return a.Set(string(text))
+}
+
+func (a *Address) URL() string {
+	return fmt.Sprintf("%s://%s:%d", a.Schema, a.Host, a.Port)
 }
 
 // === Custom Flag Type ===
@@ -113,7 +119,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 	fs := flag.NewFlagSet("agent", flag.ContinueOnError)
 
 	// Default
-	cfg.Address = Address{Host: "http://127.0.0.1", Port: 8080}
+	cfg.Address = Address{Schema: "http", Host: "127.0.0.1", Port: 8080}
 	cfg.PollInterval = Duration{Duration: 2 * time.Second}
 	cfg.ReportInterval = Duration{Duration: 10 * time.Second}
 	fs.Var(&cfg.Address, "a", "server address")
@@ -131,7 +137,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 	}
 
 	finalCfg := AgentConfig{
-		Address:        cfg.Address.String(),
+		Address:        cfg.Address.URL(),
 		PollInterval:   cfg.PollInterval.Duration,
 		ReportInterval: cfg.ReportInterval.Duration,
 	}
