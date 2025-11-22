@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -152,7 +151,7 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 	}
 
 	// Request body formation
-	bodyBytes, err := json.Marshal(metricDTO)
+	bodyBytes, err := metricDTO.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("error marshaling metric body: %w", err)
 	}
