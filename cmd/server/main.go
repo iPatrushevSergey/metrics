@@ -90,7 +90,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.GzipGinMiddleware())
-	router.Use(logger.ZapLogger())
+	router.Use(middleware.LoggerMiddleware())
 	router.Use(func(c *gin.Context) {
 		c.Set("json.Serializer", &GinJSONSerializer{})
 		c.Next()
