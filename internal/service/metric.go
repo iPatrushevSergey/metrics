@@ -3,14 +3,16 @@ package service
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/google/uuid"
+	"github.com/iPatrushevSergey/metrics/internal/filestorage"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository"
+	"go.uber.org/zap"
 )
 
 var (
@@ -47,14 +49,33 @@ func formatMetricToStr(metric model.Metric) (string, error) {
 }
 
 type MetricsService struct {
-	metricRepo repository.MetricRepository
+	metricRepo    repository.MetricRepository
+	fileStorage   *filestorage.FileStorage
+	storeInterval time.Duration
 }
 
-func NewMetricService(repo repository.MetricRepository) *MetricsService {
-	return &MetricsService{metricRepo: repo}
+func NewMetricService(
+	repo repository.MetricRepository,
+	fs *filestorage.FileStorage,
+	storeInterval time.Duration,
+) *MetricsService {
+	return &MetricsService{
+		metricRepo:    repo,
+		fileStorage:   fs,
+		storeInterval: storeInterval,
+	}
 }
 
-func (s *MetricsService) Get(mType, mName string) (string, error) {
+func (s *MetricsService) saveSynchronously() {
+	if s.storeInterval == 0 {
+		metrics := s.metricRepo.GetAll()
+		if err := s.fileStorage.Save(metrics); err != nil {
+			logger.Log.Error("failed to sync save metrics to file", zap.Error(err))
+		}
+	}
+}
+
+func (s *MetricsService) GetValue(mType, mName string) (string, error) {
 	mType = strings.ToLower(mType)
 	mName = strings.TrimSpace(strings.ToLower(mName))
 
@@ -64,7 +85,7 @@ func (s *MetricsService) Get(mType, mName string) (string, error) {
 		return "", ErrBadMetricType
 	}
 
-	metric, exists := s.metricRepo.GetByName(mName)
+	metric, exists := s.metricRepo.GetByID(mName)
 
 	if !exists {
 		return "", ErrNotFound
@@ -82,6 +103,40 @@ func (s *MetricsService) Get(mType, mName string) (string, error) {
 	return formattedMetric, nil
 }
 
+func (s *MetricsService) GetMetric(mType, mName string) (model.Metric, error) {
+	mType = strings.ToLower(mType)
+	mName = strings.TrimSpace(strings.ToLower(mName))
+
+	switch mType {
+	case model.Gauge, model.Counter:
+	default:
+		return model.Metric{}, ErrBadMetricType
+	}
+
+	metric, exists := s.metricRepo.GetByID(mName)
+
+	if !exists {
+		return model.Metric{}, ErrNotFound
+	}
+
+	if metric.MType != mType {
+		return model.Metric{}, ErrNotFound
+	}
+
+	switch metric.MType {
+	case model.Gauge:
+		if metric.Value == nil {
+			return model.Metric{}, fmt.Errorf("%w: gauge value is nil", ErrInternal)
+		}
+	case model.Counter:
+		if metric.Delta == nil {
+			return model.Metric{}, fmt.Errorf("%w: counter value is nil", ErrInternal)
+		}
+	}
+
+	return metric, nil
+}
+
 func (s *MetricsService) GetAll() (responseMetrics, error) {
 	metrics := s.metricRepo.GetAll()
 
@@ -97,7 +152,7 @@ func (s *MetricsService) GetAll() (responseMetrics, error) {
 	for _, key := range keys {
 		value, err := formatMetricToStr(metrics[key])
 		if err != nil {
-			log.Printf("error formatting metric %s: %v", key, err)
+			logger.Log.Error("error formatting metric", zap.String("key", key), zap.Error(err))
 			continue
 		}
 		data.Metrics = append(data.Metrics, templateData{Name: key, Value: value})
@@ -128,13 +183,13 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 		return ErrBadMetricType
 	}
 
-	metric, exists := s.metricRepo.GetByName(mName)
+	metric, exists := s.metricRepo.GetByID(mName)
 
 	// If there is no object, I should return the error that the object was not found.
 	// This implementation is similar to upsert
 	if !exists {
 		metric = model.Metric{
-			ID:    uuid.NewString(),
+			ID:    mName,
 			MType: mType,
 		}
 
@@ -144,7 +199,8 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 		case int64:
 			metric.Delta = &v
 		}
-		s.metricRepo.Create(mName, metric)
+		s.metricRepo.Create(metric)
+		s.saveSynchronously()
 		return nil
 	}
 
@@ -155,5 +211,32 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 		*metric.Delta += v
 	}
 	s.metricRepo.Update(mName, metric)
+	s.saveSynchronously()
+	return nil
+}
+
+func (s *MetricsService) UpdateJSON(metric model.Metric) error {
+	metric.MType = strings.ToLower(metric.MType)
+	metric.ID = strings.TrimSpace(strings.ToLower(metric.ID))
+
+	metricDB, exists := s.metricRepo.GetByID(metric.ID)
+
+	// If there is no object, I should return the error that the object was not found.
+	// This implementation is similar to upsert
+	if !exists {
+		s.metricRepo.Create(metric)
+		s.saveSynchronously()
+		return nil
+	}
+
+	switch metric.MType {
+	case model.Counter:
+		*metricDB.Delta += *metric.Delta
+	case model.Gauge:
+		metricDB.Value = metric.Value
+	}
+
+	s.metricRepo.Update(metricDB.ID, metricDB)
+	s.saveSynchronously()
 	return nil
 }

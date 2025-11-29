@@ -3,8 +3,10 @@ package service
 import (
 	"testing"
 
+	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,16 +24,17 @@ func TestMetricServiceGet(t *testing.T) {
 	typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 	typedRepo.DB = initialState
 
-	metricService := NewMetricService(typedRepo)
+	fs := filestorage.NewFileStorage("metrics_test.json")
+	metricService := NewMetricService(typedRepo, fs, 50)
 
 	t.Run("success get metric", func(t *testing.T) {
-		metric, err := metricService.Get("gauge", "gauge")
+		metric, err := metricService.GetValue("gauge", "gauge")
 		require.NoError(t, err)
 		assert.Equal(t, "10.5", metric)
 	})
 
 	t.Run("error metric not found", func(t *testing.T) {
-		_, err := metricService.Get("counter", "nonexistent")
+		_, err := metricService.GetValue("counter", "nonexistent")
 		require.Error(t, err)
 		assert.EqualError(t, err, "metric not found")
 	})
@@ -48,7 +51,8 @@ func TestMetricServiceGetAll(t *testing.T) {
 		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 		typedRepo.DB = initialState
 
-		metricService := NewMetricService(typedRepo)
+		fs := filestorage.NewFileStorage("metrics_test.json")
+		metricService := NewMetricService(typedRepo, fs, 50)
 
 		allMetrics, err := metricService.GetAll()
 		require.NoError(t, err)
@@ -77,7 +81,8 @@ func TestMetricServiceGetAll(t *testing.T) {
 		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 		typedRepo.DB = initialState
 
-		metricService := NewMetricService(typedRepo)
+		fs := filestorage.NewFileStorage("metrics_test.json")
+		metricService := NewMetricService(typedRepo, fs, 50)
 
 		allMetrics, err := metricService.GetAll()
 		require.NoError(t, err)
@@ -156,11 +161,12 @@ func TestMetricServiceUpdate(t *testing.T) {
 
 			typedMockRepo.DB = tt.initialState
 
-			service := NewMetricService(mockRepo)
+			fs := filestorage.NewFileStorage("metrics_test.json")
+			service := NewMetricService(mockRepo, fs, 50)
 			err := service.Update(tt.metricType, tt.metricName, tt.metricValue)
 			require.NoError(t, err)
 
-			resultMetric, exists := mockRepo.GetByName(tt.metricName)
+			resultMetric, exists := mockRepo.GetByID(tt.metricName)
 
 			require.Equal(t, tt.want.exists, exists)
 

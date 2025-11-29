@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -9,18 +11,13 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
+	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
-
-type Config struct {
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	ServerAddress  string
-}
 
 type CustomStats struct {
 	PollCount   int64
@@ -28,7 +25,7 @@ type CustomStats struct {
 }
 
 type Agent struct {
-	config Config
+	config config.AgentConfig
 	client *http.Client
 	mu     sync.RWMutex // The pattern "Critical Section"
 
@@ -38,7 +35,7 @@ type Agent struct {
 }
 
 // The pattern "Constructor"
-func NewAgent(config Config) *Agent {
+func NewAgent(config config.AgentConfig) *Agent {
 	return &Agent{
 		config: config,
 		client: &http.Client{Timeout: 2 * time.Second},
@@ -103,8 +100,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 		default:
 		}
 
-		valStr := strconv.FormatFloat(value, 'f', -1, 64)
-		if err := a.sendMetric(ctx, model.Gauge, name, valStr); err != nil {
+		if err := a.sendMetric(ctx, model.Gauge, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Printf("Sending metric %s canceled\n", name)
 				return
@@ -122,8 +118,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 		default:
 		}
 
-		valStr := strconv.FormatInt(value, 10)
-		if err := a.sendMetric(ctx, model.Counter, name, valStr); err != nil {
+		if err := a.sendMetric(ctx, model.Counter, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Printf("Sending metric %s canceled\n", name)
 				return
@@ -133,24 +128,75 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 	}
 }
 
-func (a *Agent) sendMetric(ctx context.Context, mType, mName, mValue string) error {
-	url := fmt.Sprintf("%s/update/%s/%s/%s", a.config.ServerAddress, mType, mName, mValue)
+func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue interface{}) error {
+	url := fmt.Sprintf("%s/update", a.config.Address)
+	metricDTO := handler.MetricDTO{ID: mName, MType: mType}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	// Type definition
+	switch mType {
+	case model.Counter:
+		val, ok := mValue.(int64)
+		if !ok {
+			return fmt.Errorf("invalid value type for Counter metric %s", mName)
+		}
+		metricDTO.Delta = &val
+	case model.Gauge:
+		val, ok := mValue.(float64)
+		if !ok {
+			return fmt.Errorf("invalid value type for Gauge metric %s", mName)
+		}
+		metricDTO.Value = &val
+	default:
+		return fmt.Errorf("unknown metric type: %s", mType)
+	}
+
+	// Request body formation
+	bodyBytes, err := metricDTO.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("error marshaling metric body: %w", err)
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(bodyBytes); err != nil {
+		return fmt.Errorf("error compressing body: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("error closing gzip writer: %w", err)
+	}
+
+	// Request formation
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
 	if err != nil {
 		return fmt.Errorf("request creation error: %w", err)
 	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Accept-Encoding", "gzip")
 
-	req.Header.Add("Content-Type", "text/plain")
-
+	// Send request
 	response, err := a.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request sending error: %w", err)
 	}
 	defer response.Body.Close()
 
+	// Unpacking
+	var reader io.ReadCloser
+	switch response.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(response.Body)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip reader for response: %w", err)
+		}
+		defer reader.Close()
+	default:
+		reader = response.Body
+	}
+
+	// Response processing
 	if response.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(response.Body)
+		body, err := io.ReadAll(reader)
 		if err != nil {
 			log.Printf("Error reading the response body: %v\n", err)
 		}
