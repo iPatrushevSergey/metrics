@@ -3,7 +3,6 @@ package service
 import (
 	"testing"
 
-	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 
@@ -24,8 +23,7 @@ func TestMetricServiceGet(t *testing.T) {
 	typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 	typedRepo.DB = initialState
 
-	fs := filestorage.NewFileStorage("metrics_test.json")
-	metricService := NewMetricService(typedRepo, fs, 50)
+	metricService := NewMetricService(typedRepo)
 
 	t.Run("success get metric", func(t *testing.T) {
 		metric, err := metricService.GetValue("gauge", "gauge")
@@ -51,8 +49,7 @@ func TestMetricServiceGetAll(t *testing.T) {
 		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 		typedRepo.DB = initialState
 
-		fs := filestorage.NewFileStorage("metrics_test.json")
-		metricService := NewMetricService(typedRepo, fs, 50)
+		metricService := NewMetricService(typedRepo)
 
 		allMetrics, err := metricService.GetAll()
 		require.NoError(t, err)
@@ -81,8 +78,7 @@ func TestMetricServiceGetAll(t *testing.T) {
 		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 		typedRepo.DB = initialState
 
-		fs := filestorage.NewFileStorage("metrics_test.json")
-		metricService := NewMetricService(typedRepo, fs, 50)
+		metricService := NewMetricService(typedRepo)
 
 		allMetrics, err := metricService.GetAll()
 		require.NoError(t, err)
@@ -161,8 +157,7 @@ func TestMetricServiceUpdate(t *testing.T) {
 
 			typedMockRepo.DB = tt.initialState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			service := NewMetricService(mockRepo, fs, 50)
+			service := NewMetricService(mockRepo)
 			err := service.Update(tt.metricType, tt.metricName, tt.metricValue)
 			require.NoError(t, err)
 

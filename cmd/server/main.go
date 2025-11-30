@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -19,9 +20,11 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
+	"github.com/iPatrushevSergey/metrics/internal/repository"
 
 	"github.com/iPatrushevSergey/metrics/internal/middleware"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
+	"github.com/iPatrushevSergey/metrics/internal/repository/postgres"
 	"github.com/iPatrushevSergey/metrics/internal/service"
 )
 
@@ -36,11 +39,13 @@ func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface
 }
 
 func main() {
+	// Loading the config
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
 		log.Fatalf("error load config: %v\n%v", cfg, err)
 	}
 
+	// Loading the logger
 	initializedLogger, err := logger.Initialize(cfg.LogLevel)
 	if err != nil {
 		log.Fatalf("error initialize logger: %v", err)
@@ -49,43 +54,69 @@ func main() {
 
 	logger.Log.Debug("starting server with config", zap.Object("cfg details", &cfg))
 
-	repo := inmemory.NewMemStorageMetricRepository()
-	fs := filestorage.NewFileStorage(cfg.FileStoragePath)
+	// Creating a repository
+	var repo repository.MetricRepository
+	var fs *filestorage.FileStorage
 
-	if cfg.Restore {
-		logger.Log.Debug("Restoring metrics from file", zap.String("path", cfg.FileStoragePath))
-		restoredMetrics, err := fs.Load()
+	if cfg.DatabaseDSN != "" {
+		// PostgreSQL
+		logger.Log.Debug("Using PostgreSQL storage")
+
+		db, err := sql.Open("pgx", cfg.DatabaseDSN)
 		if err != nil {
-			logger.Log.Error("Failed to restore metrics", zap.Error(err))
-		} else {
-			for _, m := range restoredMetrics {
-				repo.Create(m)
+			logger.Log.Fatal("Failed to open DB connection", zap.Error(err))
+		}
+		defer db.Close()
+
+		repo = postgres.NewPostgresMetricRepository(db)
+	} else {
+		// Inmemory
+		logger.Log.Debug("Using In-Memory storage with FileStorage")
+
+		memRepo := inmemory.NewMemStorageMetricRepository()
+		fs = filestorage.NewFileStorage(cfg.FileStoragePath)
+
+		if cfg.Restore {
+			logger.Log.Debug("Restoring metrics from file", zap.String("path", cfg.FileStoragePath))
+			restoredMetrics, err := fs.Load()
+			if err != nil {
+				logger.Log.Error("Failed to restore metrics", zap.Error(err))
+			} else {
+				for _, m := range restoredMetrics {
+					memRepo.Create(m)
+				}
+				logger.Log.Debug("Metrics restored successfully", zap.Int("count", len(restoredMetrics)))
 			}
-			logger.Log.Debug("Metrics restored successfully", zap.Int("count", len(restoredMetrics)))
 		}
 
-	}
+		// Defining the inmemory type (sync or async)
+		if cfg.StoreInterval == 0 {
+			logger.Log.Debug("Sync saving mode enable (StorageInterval=0)")
+			repo = inmemory.NewSyncFileRepository(memRepo, fs)
+		} else {
+			repo = memRepo
+		}
 
-	metricService := service.NewMetricService(repo, fs, cfg.StoreInterval)
-	metricHandler := handler.NewMetricHandler(metricService)
+		if cfg.StoreInterval > 0 {
+			go func() {
+				ticker := time.NewTicker(cfg.StoreInterval)
+				defer ticker.Stop()
 
-	if cfg.StoreInterval > 0 {
-		go func() {
-			ticker := time.NewTicker(cfg.StoreInterval)
-			defer ticker.Stop()
+				logger.Log.Debug("Starting periodic metric saver", zap.Duration("interval_sec", cfg.StoreInterval))
 
-			logger.Log.Debug("Starting periodic metric saver", zap.Duration("interval_sec", cfg.StoreInterval))
-
-			for range ticker.C {
-				allMetrics := repo.GetAll()
-				if err := fs.Save(allMetrics); err != nil {
-					logger.Log.Error("Failed to save metrics to file", zap.Error(err))
-				} else {
-					logger.Log.Debug("Metrics saved to file")
+				for range ticker.C {
+					if err := fs.Save(repo.GetAll()); err != nil {
+						logger.Log.Error("Failed to save metrics to file", zap.Error(err))
+					} else {
+						logger.Log.Debug("Metrics saved to file")
+					}
 				}
-			}
-		}()
+			}()
+		}
 	}
+
+	metricService := service.NewMetricService(repo)
+	metricHandler := handler.NewMetricHandler(metricService)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -96,6 +127,7 @@ func main() {
 		c.Next()
 	})
 
+	router.GET("/ping", metricHandler.PingDB)
 	router.GET("/", metricHandler.GetAll)
 	router.POST("/update", metricHandler.UpdateJSON)
 	router.POST("/value", metricHandler.GetJSON)
@@ -122,9 +154,11 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	logger.Log.Debug("Saving metrics before shutdown...")
-	if err := fs.Save(repo.GetAll()); err != nil {
-		logger.Log.Error("Failed to save metrics on shutdown", zap.Error(err))
+	if cfg.DatabaseDSN == "" && fs != nil {
+		logger.Log.Debug("Saving metrics before shutdown...")
+		if err := fs.Save(repo.GetAll()); err != nil {
+			logger.Log.Error("Failed to save metrics on shutdown", zap.Error(err))
+		}
 	}
 
 	logger.Log.Debug("Shutting down server...")

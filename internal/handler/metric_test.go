@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
@@ -76,8 +75,7 @@ func TestMetricHandlerUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := inmemory.NewMemStorageMetricRepository()
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(repo, fs, 50)
+			metricService := service.NewMetricService(repo)
 			metricHandler := NewMetricHandler(metricService)
 
 			router := gin.New()
@@ -155,8 +153,7 @@ func TestMetricHandlerGetValue(t *testing.T) {
 			typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 			typedRepo.DB = initialState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(typedRepo, fs, 50)
+			metricService := service.NewMetricService(typedRepo)
 			metricHandler := NewMetricHandler(metricService)
 
 			router := gin.New()
@@ -231,8 +228,7 @@ func TestMetricHandlerGetJSON(t *testing.T) {
 			typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 			typedRepo.DB = initialState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(typedRepo, fs, 50)
+			metricService := service.NewMetricService(typedRepo)
 			metricHandler := NewMetricHandler(metricService)
 
 			router := gin.New()
@@ -322,8 +318,7 @@ func TestMetricHandlerGetAll(t *testing.T) {
 			typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 			typedRepo.DB = tt.repoState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(typedRepo, fs, 50)
+			metricService := service.NewMetricService(typedRepo)
 			metricHandler := NewMetricHandler(metricService)
 
 			router := gin.New()
