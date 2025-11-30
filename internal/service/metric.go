@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -218,4 +219,8 @@ func (s *MetricsService) UpdateJSON(metric model.Metric) error {
 
 	s.metricRepo.Update(metricDB.ID, metricDB)
 	return nil
+}
+
+func (s *MetricsService) PingDB(ctx context.Context) error {
+	return s.metricRepo.Ping(ctx)
 }
