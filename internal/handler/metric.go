@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"html/template"
 
@@ -151,5 +153,18 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 		return
 	}
 
+	c.Status(http.StatusOK)
+}
+
+func (h *MetricHandler) PingDB(c *gin.Context) {
+	ctx := c.Request.Context()
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+
+	if err := h.metricService.PingDB(ctx); err != nil {
+		logger.Log.Error("Database ping failed", zap.Error(err))
+		c.String(http.StatusInternalServerError, service.ErrInternal.Error())
+		return
+	}
 	c.Status(http.StatusOK)
 }
