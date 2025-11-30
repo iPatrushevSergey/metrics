@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"context"
 	"sync"
 
 	"github.com/iPatrushevSergey/metrics/internal/model"
@@ -36,14 +37,20 @@ func (r *MemStorageMetricRepository) GetAll() map[string]model.Metric {
 	return metricsCopy
 }
 
-func (r *MemStorageMetricRepository) Create(metric model.Metric) {
+func (r *MemStorageMetricRepository) Create(metric model.Metric) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.DB[metric.ID] = metric
+	return nil
 }
 
-func (r *MemStorageMetricRepository) Update(id string, metric model.Metric) {
+func (r *MemStorageMetricRepository) Update(id string, metric model.Metric) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.DB[id] = metric
+	return nil
+}
+
+func (r *MemStorageMetricRepository) Ping(ctx context.Context) error {
+	return nil
 }
