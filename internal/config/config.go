@@ -154,12 +154,13 @@ type ServerConfig struct {
 	StoreInterval   time.Duration
 	FileStoragePath string
 	Restore         bool
+	DatabaseDSN     string
 }
 
 func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("address", c.Address)
 	enc.AddString("level", c.LogLevel)
-	enc.AddDuration("interval", c.StoreInterval)
+	enc.AddDuration("store_interval", c.StoreInterval)
 	enc.AddString("storage_path", c.FileStoragePath)
 	enc.AddBool("restore", c.Restore)
 	return nil
@@ -171,6 +172,7 @@ type serverInternalConfig struct {
 	StoreInterval   Duration `env:"STORE_INTERVAL"`
 	FileStoragePath string   `env:"FILE_STORAGE_PATH"`
 	Restore         bool     `env:"RESTORE"`
+	DatabaseDSN     string   `env:"DATABASE_DSN"`
 }
 
 // Environment variables take precedence over flags.
@@ -187,6 +189,7 @@ func LoadServerConfig() (ServerConfig, error) {
 	fs.Var(&cfg.StoreInterval, "i", "server data save interval (seconds or duration)")
 	fs.StringVar(&cfg.FileStoragePath, "f", "metrics.json", "file path")
 	fs.BoolVar(&cfg.Restore, "r", true, "load data from file at startup")
+	fs.StringVar(&cfg.DatabaseDSN, "d", "", "database dsn")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -204,6 +207,7 @@ func LoadServerConfig() (ServerConfig, error) {
 		StoreInterval:   cfg.StoreInterval.Duration,
 		FileStoragePath: cfg.FileStoragePath,
 		Restore:         cfg.Restore,
+		DatabaseDSN:     cfg.DatabaseDSN,
 	}
 
 	return finalCfg, nil
