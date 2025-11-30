@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	gojson "github.com/goccy/go-json"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/filestorage"
@@ -68,7 +69,15 @@ func main() {
 		}
 		defer db.Close()
 
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		if err := db.PingContext(ctx); err != nil {
+			logger.Log.Fatal("Unable to connect to database", zap.Error(err))
+		}
+
 		repo = postgres.NewPostgresMetricRepository(db)
+		fs = nil
 	} else {
 		// Inmemory
 		logger.Log.Debug("Using In-Memory storage with FileStorage")
