@@ -18,6 +18,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/database"
 	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
@@ -62,6 +63,10 @@ func main() {
 	if cfg.DatabaseDSN != "" {
 		// PostgreSQL
 		logger.Log.Debug("Using PostgreSQL storage")
+
+		if err := database.RunMigrations(cfg.DatabaseDSN); err != nil {
+			logger.Log.Fatal("Failed to run migrations", zap.Error(err))
+		}
 
 		db, err := sql.Open("pgx", cfg.DatabaseDSN)
 		if err != nil {
