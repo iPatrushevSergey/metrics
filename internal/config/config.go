@@ -189,7 +189,10 @@ func LoadServerConfig() (ServerConfig, error) {
 	fs.Var(&cfg.StoreInterval, "i", "server data save interval (seconds or duration)")
 	fs.StringVar(&cfg.FileStoragePath, "f", "metrics.json", "file path")
 	fs.BoolVar(&cfg.Restore, "r", true, "load data from file at startup")
-	fs.StringVar(&cfg.DatabaseDSN, "d", "", "database dsn")
+	fs.StringVar(
+		&cfg.DatabaseDSN, "d", "",
+		"database dsn, example: postgres://user:password@localhost:5432/db?sslmode=disable",
+	)
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
