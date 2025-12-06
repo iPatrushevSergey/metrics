@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ func floatp(f float64) *float64 { return &f }
 func intp(i int64) *int64       { return &i }
 
 func TestMemStorageMetricRepository(t *testing.T) {
+	ctx := context.Background()
 	t.Run("create", func(t *testing.T) {
 		repo := NewMemStorageMetricRepository()
 
@@ -25,9 +27,9 @@ func TestMemStorageMetricRepository(t *testing.T) {
 			MType: model.Gauge,
 			Value: &mValue,
 		}
-		repo.Create(createMetric)
+		repo.Create(ctx, createMetric)
 
-		repoMetric, exists := repo.GetByID(mName)
+		repoMetric, exists := repo.GetByID(ctx, mName)
 		require.True(t, exists)
 		assert.Equal(t, createMetric, repoMetric)
 	})
@@ -44,16 +46,16 @@ func TestMemStorageMetricRepository(t *testing.T) {
 			MType: model.Counter,
 			Delta: &mDelta1,
 		}
-		repo.Create(createMetric)
+		repo.Create(ctx, createMetric)
 
 		updateMetric := model.Metric{
 			ID:    mName,
 			MType: model.Counter,
 			Delta: &mDelta2,
 		}
-		repo.Update(mName, updateMetric)
+		repo.Update(ctx, mName, updateMetric)
 
-		repoMetric, exists := repo.GetByID(mName)
+		repoMetric, exists := repo.GetByID(ctx, mName)
 		require.True(t, exists)
 		assert.Equal(t, updateMetric, repoMetric)
 	})
@@ -61,7 +63,7 @@ func TestMemStorageMetricRepository(t *testing.T) {
 	t.Run("get non-existent metric", func(t *testing.T) {
 		repo := NewMemStorageMetricRepository()
 
-		_, exists := repo.GetByID("nonexistent")
+		_, exists := repo.GetByID(ctx, "nonexistent")
 		assert.False(t, exists)
 	})
 
@@ -76,7 +78,7 @@ func TestMemStorageMetricRepository(t *testing.T) {
 
 		typedRepo.DB = initialState
 
-		allMetrics := typedRepo.GetAll()
+		allMetrics := typedRepo.GetAll(ctx)
 		assert.Equal(t, 2, len(initialState))
 		assert.Equal(t, initialState["gauge"], allMetrics["gauge"])
 		assert.Equal(t, initialState["counter"], allMetrics["counter"])
@@ -102,11 +104,11 @@ func TestMemStorageMetricRepository(t *testing.T) {
 				gaugeValue := 12.5
 				counterValue := int64(15)
 
-				repo.Create(model.Metric{ID: gaugeName, Value: &gaugeValue})
-				repo.Create(model.Metric{ID: counterName, Delta: &counterValue})
+				repo.Create(ctx, model.Metric{ID: gaugeName, Value: &gaugeValue})
+				repo.Create(ctx, model.Metric{ID: counterName, Delta: &counterValue})
 
-				_, _ = repo.GetByID(gaugeName)
-				_, _ = repo.GetByID(counterName)
+				_, _ = repo.GetByID(ctx, gaugeName)
+				_, _ = repo.GetByID(ctx, counterName)
 			}()
 		}
 		wg.Wait()

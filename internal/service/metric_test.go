@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/iPatrushevSergey/metrics/internal/model"
@@ -14,6 +15,8 @@ func floatp(f float64) *float64 { return &f }
 func intp(i int64) *int64       { return &i }
 
 func TestMetricServiceGet(t *testing.T) {
+	ctx := context.Background()
+
 	initialState := map[string]model.Metric{
 		"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(10.5)},
 		"counter": {ID: "c1", MType: model.Counter, Delta: intp(50)},
@@ -26,19 +29,21 @@ func TestMetricServiceGet(t *testing.T) {
 	metricService := NewMetricService(typedRepo)
 
 	t.Run("success get metric", func(t *testing.T) {
-		metric, err := metricService.GetValue("gauge", "gauge")
+		metric, err := metricService.GetValue(ctx, "gauge", "gauge")
 		require.NoError(t, err)
 		assert.Equal(t, "10.5", metric)
 	})
 
 	t.Run("error metric not found", func(t *testing.T) {
-		_, err := metricService.GetValue("counter", "nonexistent")
+		_, err := metricService.GetValue(ctx, "counter", "nonexistent")
 		require.Error(t, err)
 		assert.EqualError(t, err, "metric not found")
 	})
 }
 
 func TestMetricServiceGetAll(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("get all existing metrics", func(t *testing.T) {
 		initialState := map[string]model.Metric{
 			"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(10.5)},
@@ -51,7 +56,7 @@ func TestMetricServiceGetAll(t *testing.T) {
 
 		metricService := NewMetricService(typedRepo)
 
-		allMetrics, err := metricService.GetAll()
+		allMetrics, err := metricService.GetAll(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(allMetrics.Metrics))
 
@@ -80,13 +85,15 @@ func TestMetricServiceGetAll(t *testing.T) {
 
 		metricService := NewMetricService(typedRepo)
 
-		allMetrics, err := metricService.GetAll()
+		allMetrics, err := metricService.GetAll(ctx)
 		require.NoError(t, err)
 		assert.Empty(t, allMetrics)
 	})
 }
 
 func TestMetricServiceUpdate(t *testing.T) {
+	ctx := context.Background()
+
 	type want struct {
 		metric model.Metric
 		exists bool
@@ -158,10 +165,10 @@ func TestMetricServiceUpdate(t *testing.T) {
 			typedMockRepo.DB = tt.initialState
 
 			service := NewMetricService(mockRepo)
-			err := service.Update(tt.metricType, tt.metricName, tt.metricValue)
+			err := service.Update(ctx, tt.metricType, tt.metricName, tt.metricValue)
 			require.NoError(t, err)
 
-			resultMetric, exists := mockRepo.GetByID(tt.metricName)
+			resultMetric, exists := mockRepo.GetByID(ctx, tt.metricName)
 
 			require.Equal(t, tt.want.exists, exists)
 
