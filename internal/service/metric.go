@@ -61,7 +61,7 @@ func NewMetricService(
 
 func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (string, error) {
 	mType = strings.ToLower(mType)
-	mName = strings.TrimSpace(strings.ToLower(mName))
+	mName = strings.TrimSpace(mName)
 
 	switch mType {
 	case model.Gauge, model.Counter:
@@ -89,7 +89,7 @@ func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (str
 
 func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (model.Metric, error) {
 	mType = strings.ToLower(mType)
-	mName = strings.TrimSpace(strings.ToLower(mName))
+	mName = strings.TrimSpace(mName)
 
 	switch mType {
 	case model.Gauge, model.Counter:
@@ -147,7 +147,7 @@ func (s *MetricsService) GetAll(ctx context.Context) (responseMetrics, error) {
 
 func (s *MetricsService) Update(ctx context.Context, mType, mName string, value string) error {
 	mType = strings.ToLower(mType)
-	mName = strings.TrimSpace(strings.ToLower(mName))
+	mName = strings.TrimSpace(mName)
 
 	var parsedValue any
 	var err error
@@ -199,7 +199,7 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 
 func (s *MetricsService) UpdateJSON(ctx context.Context, metric model.Metric) error {
 	metric.MType = strings.ToLower(metric.MType)
-	metric.ID = strings.TrimSpace(strings.ToLower(metric.ID))
+	metric.ID = strings.TrimSpace(metric.ID)
 
 	metricDB, exists := s.metricRepo.GetByID(ctx, metric.ID)
 
