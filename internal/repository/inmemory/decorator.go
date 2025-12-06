@@ -23,28 +23,28 @@ func NewSyncFileRepository(
 	}
 }
 
-func (r *SyncFileRepository) Create(m model.Metric) error {
-	if err := r.repo.Create(m); err != nil {
+func (r *SyncFileRepository) Create(ctx context.Context, m model.Metric) error {
+	if err := r.repo.Create(ctx, m); err != nil {
 		return err
 	}
 
-	return r.fs.Save(r.repo.GetAll())
+	return r.fs.Save(r.repo.GetAll(ctx))
 }
 
-func (r *SyncFileRepository) Update(id string, m model.Metric) error {
-	if err := r.repo.Update(id, m); err != nil {
+func (r *SyncFileRepository) Update(ctx context.Context, id string, m model.Metric) error {
+	if err := r.repo.Update(ctx, id, m); err != nil {
 		return err
 	}
 
-	return r.fs.Save(r.repo.GetAll())
+	return r.fs.Save(r.repo.GetAll(ctx))
 }
 
-func (r *SyncFileRepository) GetByID(id string) (model.Metric, bool) {
-	return r.repo.GetByID(id)
+func (r *SyncFileRepository) GetByID(ctx context.Context, id string) (model.Metric, bool) {
+	return r.repo.GetByID(ctx, id)
 }
 
-func (r *SyncFileRepository) GetAll() map[string]model.Metric {
-	return r.repo.GetAll()
+func (r *SyncFileRepository) GetAll(ctx context.Context) map[string]model.Metric {
+	return r.repo.GetAll(ctx)
 }
 
 func (r *SyncFileRepository) Ping(ctx context.Context) error {
