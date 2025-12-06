@@ -19,14 +19,14 @@ func NewMemStorageMetricRepository() repository.MetricRepository {
 	}
 }
 
-func (r *MemStorageMetricRepository) GetByID(id string) (model.Metric, bool) {
+func (r *MemStorageMetricRepository) GetByID(ctx context.Context, id string) (model.Metric, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	metric, exists := r.DB[id]
 	return metric, exists
 }
 
-func (r *MemStorageMetricRepository) GetAll() map[string]model.Metric {
+func (r *MemStorageMetricRepository) GetAll(ctx context.Context) map[string]model.Metric {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -37,14 +37,14 @@ func (r *MemStorageMetricRepository) GetAll() map[string]model.Metric {
 	return metricsCopy
 }
 
-func (r *MemStorageMetricRepository) Create(metric model.Metric) error {
+func (r *MemStorageMetricRepository) Create(ctx context.Context, metric model.Metric) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.DB[metric.ID] = metric
 	return nil
 }
 
-func (r *MemStorageMetricRepository) Update(id string, metric model.Metric) error {
+func (r *MemStorageMetricRepository) Update(ctx context.Context, id string, metric model.Metric) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.DB[id] = metric
