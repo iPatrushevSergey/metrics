@@ -105,8 +105,8 @@ func TestMetricHandlerGetValue(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	initialState := map[string]model.Metric{
-		"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(101.1)},
-		"counter": {ID: "c1", MType: model.Counter, Delta: intp(11)},
+		"Gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(101.1)},
+		"Counter": {ID: "c1", MType: model.Counter, Delta: intp(11)},
 		"nil":     {ID: "g2", MType: model.Gauge, Value: nil},
 	}
 
