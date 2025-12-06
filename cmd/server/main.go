@@ -96,8 +96,9 @@ func main() {
 			if err != nil {
 				logger.Log.Error("Failed to restore metrics", zap.Error(err))
 			} else {
+				ctxRestore := context.Background()
 				for _, m := range restoredMetrics {
-					memRepo.Create(m)
+					memRepo.Create(ctxRestore, m)
 				}
 				logger.Log.Debug("Metrics restored successfully", zap.Int("count", len(restoredMetrics)))
 			}
@@ -119,7 +120,7 @@ func main() {
 				logger.Log.Debug("Starting periodic metric saver", zap.Duration("interval_sec", cfg.StoreInterval))
 
 				for range ticker.C {
-					if err := fs.Save(repo.GetAll()); err != nil {
+					if err := fs.Save(repo.GetAll(context.Background())); err != nil {
 						logger.Log.Error("Failed to save metrics to file", zap.Error(err))
 					} else {
 						logger.Log.Debug("Metrics saved to file")
@@ -170,7 +171,7 @@ func main() {
 
 	if cfg.DatabaseDSN == "" && fs != nil {
 		logger.Log.Debug("Saving metrics before shutdown...")
-		if err := fs.Save(repo.GetAll()); err != nil {
+		if err := fs.Save(repo.GetAll(ctx)); err != nil {
 			logger.Log.Error("Failed to save metrics on shutdown", zap.Error(err))
 		}
 	}
