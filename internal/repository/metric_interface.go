@@ -7,9 +7,9 @@ import (
 )
 
 type MetricRepository interface {
-	GetByID(id string) (model.Metric, bool)
-	GetAll() map[string]model.Metric
-	Update(id string, metric model.Metric) error
-	Create(metric model.Metric) error
+	GetByID(ctx context.Context, id string) (model.Metric, bool)
+	GetAll(ctx context.Context) map[string]model.Metric
+	Update(ctx context.Context, id string, metric model.Metric) error
+	Create(ctx context.Context, metric model.Metric) error
 	Ping(ctx context.Context) error
 }
