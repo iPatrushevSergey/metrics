@@ -41,10 +41,11 @@ func NewMetricHandler(s *service.MetricsService) *MetricHandler {
 }
 
 func (h *MetricHandler) GetValue(c *gin.Context) {
+	ctx := c.Request.Context()
 	metricType := c.Param("type")
 	metricName := c.Param("name")
 
-	metric, err := h.metricService.GetValue(metricType, metricName)
+	metric, err := h.metricService.GetValue(ctx, metricType, metricName)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
 			c.String(http.StatusNotFound, err.Error())
@@ -61,6 +62,7 @@ func (h *MetricHandler) GetValue(c *gin.Context) {
 }
 
 func (h *MetricHandler) GetJSON(c *gin.Context) {
+	ctx := c.Request.Context()
 	var dto MetricDTO
 
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
@@ -68,7 +70,7 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 		return
 	}
 
-	metricModel, err := h.metricService.GetMetric(dto.MType, dto.ID)
+	metricModel, err := h.metricService.GetMetric(ctx, dto.MType, dto.ID)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -86,7 +88,9 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 }
 
 func (h *MetricHandler) GetAll(c *gin.Context) {
-	metrics, err := h.metricService.GetAll()
+	ctx := c.Request.Context()
+
+	metrics, err := h.metricService.GetAll(ctx)
 	if err != nil {
 		logger.Log.Error("Internal server error in GetAll", zap.Error(err))
 		c.String(http.StatusInternalServerError, "Failed to get metrics")
@@ -104,6 +108,7 @@ func (h *MetricHandler) GetAll(c *gin.Context) {
 }
 
 func (h *MetricHandler) Update(c *gin.Context) {
+	ctx := c.Request.Context()
 	metricType := c.Param("type")
 	metricName := c.Param("name")
 	metricValue := c.Param("value")
@@ -113,7 +118,7 @@ func (h *MetricHandler) Update(c *gin.Context) {
 		return
 	}
 
-	err := h.metricService.Update(metricType, metricName, metricValue)
+	err := h.metricService.Update(ctx, metricType, metricName, metricValue)
 	if err != nil {
 		if errors.Is(err, service.ErrBadMetricType) || errors.Is(err, service.ErrBadMetricValue) {
 			c.String(http.StatusBadRequest, err.Error())
@@ -128,6 +133,7 @@ func (h *MetricHandler) Update(c *gin.Context) {
 }
 
 func (h *MetricHandler) UpdateJSON(c *gin.Context) {
+	ctx := c.Request.Context()
 	var dto MetricDTO
 
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
@@ -146,7 +152,7 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 		return
 	}
 
-	err = h.metricService.UpdateJSON(metricModel)
+	err = h.metricService.UpdateJSON(ctx, metricModel)
 	if err != nil {
 		logger.Log.Error("Internal server error in UpdateJSON", zap.Error(err))
 		c.String(http.StatusInternalServerError, service.ErrInternal.Error())
