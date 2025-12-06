@@ -59,7 +59,7 @@ func NewMetricService(
 	}
 }
 
-func (s *MetricsService) GetValue(mType, mName string) (string, error) {
+func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (string, error) {
 	mType = strings.ToLower(mType)
 	mName = strings.TrimSpace(strings.ToLower(mName))
 
@@ -69,7 +69,7 @@ func (s *MetricsService) GetValue(mType, mName string) (string, error) {
 		return "", ErrBadMetricType
 	}
 
-	metric, exists := s.metricRepo.GetByID(mName)
+	metric, exists := s.metricRepo.GetByID(ctx, mName)
 
 	if !exists {
 		return "", ErrNotFound
@@ -87,7 +87,7 @@ func (s *MetricsService) GetValue(mType, mName string) (string, error) {
 	return formattedMetric, nil
 }
 
-func (s *MetricsService) GetMetric(mType, mName string) (model.Metric, error) {
+func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (model.Metric, error) {
 	mType = strings.ToLower(mType)
 	mName = strings.TrimSpace(strings.ToLower(mName))
 
@@ -97,7 +97,7 @@ func (s *MetricsService) GetMetric(mType, mName string) (model.Metric, error) {
 		return model.Metric{}, ErrBadMetricType
 	}
 
-	metric, exists := s.metricRepo.GetByID(mName)
+	metric, exists := s.metricRepo.GetByID(ctx, mName)
 
 	if !exists {
 		return model.Metric{}, ErrNotFound
@@ -121,8 +121,8 @@ func (s *MetricsService) GetMetric(mType, mName string) (model.Metric, error) {
 	return metric, nil
 }
 
-func (s *MetricsService) GetAll() (responseMetrics, error) {
-	metrics := s.metricRepo.GetAll()
+func (s *MetricsService) GetAll(ctx context.Context) (responseMetrics, error) {
+	metrics := s.metricRepo.GetAll(ctx)
 
 	keys := make([]string, 0, len(metrics))
 
@@ -145,7 +145,7 @@ func (s *MetricsService) GetAll() (responseMetrics, error) {
 	return data, nil
 }
 
-func (s *MetricsService) Update(mType, mName string, value string) error {
+func (s *MetricsService) Update(ctx context.Context, mType, mName string, value string) error {
 	mType = strings.ToLower(mType)
 	mName = strings.TrimSpace(strings.ToLower(mName))
 
@@ -167,7 +167,7 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 		return ErrBadMetricType
 	}
 
-	metric, exists := s.metricRepo.GetByID(mName)
+	metric, exists := s.metricRepo.GetByID(ctx, mName)
 
 	// If there is no object, I should return the error that the object was not found.
 	// This implementation is similar to upsert
@@ -183,7 +183,7 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 		case int64:
 			metric.Delta = &v
 		}
-		s.metricRepo.Create(metric)
+		s.metricRepo.Create(ctx, metric)
 		return nil
 	}
 
@@ -193,20 +193,20 @@ func (s *MetricsService) Update(mType, mName string, value string) error {
 	case int64:
 		*metric.Delta += v
 	}
-	s.metricRepo.Update(mName, metric)
+	s.metricRepo.Update(ctx, mName, metric)
 	return nil
 }
 
-func (s *MetricsService) UpdateJSON(metric model.Metric) error {
+func (s *MetricsService) UpdateJSON(ctx context.Context, metric model.Metric) error {
 	metric.MType = strings.ToLower(metric.MType)
 	metric.ID = strings.TrimSpace(strings.ToLower(metric.ID))
 
-	metricDB, exists := s.metricRepo.GetByID(metric.ID)
+	metricDB, exists := s.metricRepo.GetByID(ctx, metric.ID)
 
 	// If there is no object, I should return the error that the object was not found.
 	// This implementation is similar to upsert
 	if !exists {
-		s.metricRepo.Create(metric)
+		s.metricRepo.Create(ctx, metric)
 		return nil
 	}
 
@@ -217,7 +217,7 @@ func (s *MetricsService) UpdateJSON(metric model.Metric) error {
 		metricDB.Value = metric.Value
 	}
 
-	s.metricRepo.Update(metricDB.ID, metricDB)
+	s.metricRepo.Update(ctx, metricDB.ID, metricDB)
 	return nil
 }
 
