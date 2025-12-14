@@ -8,11 +8,13 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func floatp(f float64) *float64 { return &f }
@@ -76,7 +78,8 @@ func TestMetricHandlerUpdate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := inmemory.NewMemStorageMetricRepository()
 			metricService := service.NewMetricService(repo)
-			metricHandler := NewMetricHandler(metricService)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.POST("/update/:type/:name/:value", metricHandler.Update)
@@ -154,7 +157,8 @@ func TestMetricHandlerGetValue(t *testing.T) {
 			typedRepo.DB = initialState
 
 			metricService := service.NewMetricService(typedRepo)
-			metricHandler := NewMetricHandler(metricService)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.GET("/value/:type/:name", metricHandler.GetValue)
@@ -229,7 +233,8 @@ func TestMetricHandlerGetJSON(t *testing.T) {
 			typedRepo.DB = initialState
 
 			metricService := service.NewMetricService(typedRepo)
-			metricHandler := NewMetricHandler(metricService)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.POST("/value", metricHandler.GetJSON)
@@ -319,7 +324,8 @@ func TestMetricHandlerGetAll(t *testing.T) {
 			typedRepo.DB = tt.repoState
 
 			metricService := service.NewMetricService(typedRepo)
-			metricHandler := NewMetricHandler(metricService)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.GET("/", metricHandler.GetAll)
