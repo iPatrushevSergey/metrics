@@ -18,16 +18,21 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
-	"github.com/iPatrushevSergey/metrics/internal/database"
 	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
-	"github.com/iPatrushevSergey/metrics/internal/repository"
-
 	"github.com/iPatrushevSergey/metrics/internal/middleware"
+	"github.com/iPatrushevSergey/metrics/internal/repository"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/repository/postgres"
 	"github.com/iPatrushevSergey/metrics/internal/service"
+)
+
+const (
+	// dbPingTimeout таймаут для проверки подключения к базе данных
+	dbPingTimeout = 3 * time.Second
+	// serverShutdownTimeout таймаут для graceful shutdown сервера
+	serverShutdownTimeout = 5 * time.Second
 )
 
 type GinJSONSerializer struct{}
@@ -59,12 +64,13 @@ func main() {
 	// Creating a repository
 	var repo repository.MetricRepository
 	var fs *filestorage.FileStorage
+	var periodicSaver *filestorage.PeriodicSaver
 
 	if cfg.DatabaseDSN != "" {
 		// PostgreSQL
 		logger.Log.Debug("Using PostgreSQL storage")
 
-		if err := database.RunMigrations(cfg.DatabaseDSN); err != nil {
+		if err := postgres.RunMigrations(cfg.DatabaseDSN); err != nil {
 			logger.Log.Fatal("Failed to run migrations", zap.Error(err))
 		}
 
@@ -74,7 +80,7 @@ func main() {
 		}
 		defer db.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), dbPingTimeout)
 		defer cancel()
 
 		if err := db.PingContext(ctx); err != nil {
@@ -98,7 +104,9 @@ func main() {
 			} else {
 				ctxRestore := context.Background()
 				for _, m := range restoredMetrics {
-					memRepo.Create(ctxRestore, m)
+					if err := memRepo.Create(ctxRestore, m); err != nil {
+						logger.Log.Warn("Failed to restore metric", zap.String("id", m.ID), zap.Error(err))
+					}
 				}
 				logger.Log.Debug("Metrics restored successfully", zap.Int("count", len(restoredMetrics)))
 			}
@@ -107,31 +115,19 @@ func main() {
 		// Defining the inmemory type (sync or async)
 		if cfg.StoreInterval == 0 {
 			logger.Log.Debug("Sync saving mode enable (StorageInterval=0)")
-			repo = inmemory.NewSyncFileRepository(memRepo, fs)
+			repo = repository.NewSyncFileRepository(memRepo, fs)
 		} else {
 			repo = memRepo
 		}
 
 		if cfg.StoreInterval > 0 {
-			go func() {
-				ticker := time.NewTicker(cfg.StoreInterval)
-				defer ticker.Stop()
-
-				logger.Log.Debug("Starting periodic metric saver", zap.Duration("interval_sec", cfg.StoreInterval))
-
-				for range ticker.C {
-					if err := fs.Save(repo.GetAll(context.Background())); err != nil {
-						logger.Log.Error("Failed to save metrics to file", zap.Error(err))
-					} else {
-						logger.Log.Debug("Metrics saved to file")
-					}
-				}
-			}()
+			periodicSaver = filestorage.NewPeriodicSaver(repo, fs, cfg.StoreInterval)
+			periodicSaver.Start()
 		}
 	}
 
 	metricService := service.NewMetricService(repo)
-	metricHandler := handler.NewMetricHandler(metricService)
+	metricHandler := handler.NewMetricHandler(metricService, logger.NewZapLoggerAdapter(initializedLogger))
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -166,12 +162,14 @@ func main() {
 	<-quit
 	logger.Log.Debug("The completion signal has been received, starting the stop...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	defer cancel()
 
 	if cfg.DatabaseDSN == "" && fs != nil {
-		logger.Log.Debug("Saving metrics before shutdown...")
-		if err := fs.Save(repo.GetAll(ctx)); err != nil {
+		if periodicSaver != nil {
+			periodicSaver.Stop()
+		}
+		if err := filestorage.SaveOnShutdown(ctx, repo, fs); err != nil {
 			logger.Log.Error("Failed to save metrics on shutdown", zap.Error(err))
 		}
 	}
