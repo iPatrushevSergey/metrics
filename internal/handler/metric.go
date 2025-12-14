@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -32,35 +33,50 @@ const metricsHTMLTemplate = `
 
 var metricsTemplate = template.Must(template.New("metrics").Parse(metricsHTMLTemplate))
 
+type templateData struct {
+	Name  string
+	Value string
+}
+
+type responseMetrics struct {
+	Metrics []templateData
+}
+
 type MetricHandler struct {
 	metricService *service.MetricsService
+	logger        logger.Logger
 }
 
-func NewMetricHandler(s *service.MetricsService) *MetricHandler {
-	return &MetricHandler{metricService: s}
+func NewMetricHandler(s *service.MetricsService, l logger.Logger) *MetricHandler {
+	return &MetricHandler{
+		metricService: s,
+		logger:        l,
+	}
 }
 
+// GetValue возвращает значение метрики в виде строки
 func (h *MetricHandler) GetValue(c *gin.Context) {
 	ctx := c.Request.Context()
-	metricType := c.Param("type")
-	metricName := c.Param("name")
+	metricType := strings.ToLower(strings.TrimSpace(c.Param("type")))
+	metricName := strings.TrimSpace(c.Param("name"))
 
-	metric, err := h.metricService.GetValue(ctx, metricType, metricName)
+	metricVal, err := h.metricService.GetValue(ctx, metricType, metricName)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
 			c.String(http.StatusNotFound, err.Error())
 		} else if errors.Is(err, service.ErrBadMetricType) {
 			c.String(http.StatusBadRequest, err.Error())
 		} else {
-			logger.Log.Error("Internal server error in GetValue", zap.Error(err))
+			h.logger.Error("Internal server error in GetValue", zap.Error(err))
 			c.String(http.StatusInternalServerError, service.ErrInternal.Error())
 		}
 		return
 	}
 
-	c.String(http.StatusOK, "%s", metric)
+	c.String(http.StatusOK, "%s", metricVal)
 }
 
+// GetJSON возвращает метрику в формате JSON
 func (h *MetricHandler) GetJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto MetricDTO
@@ -70,14 +86,18 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 		return
 	}
 
-	metricModel, err := h.metricService.GetMetric(ctx, dto.MType, dto.ID)
+	// Нормализация данных перед передачей в service
+	metricType := strings.ToLower(strings.TrimSpace(dto.MType))
+	metricName := strings.TrimSpace(dto.ID)
+
+	metricModel, err := h.metricService.GetMetric(ctx, metricType, metricName)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		} else if errors.Is(err, service.ErrBadMetricType) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		} else {
-			logger.Log.Error("Internal server error in GetMetric", zap.Error(err))
+			h.logger.Error("Internal server error in GetMetric", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": service.ErrInternal.Error()})
 		}
 		return
@@ -87,33 +107,49 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// GetAll возвращает все метрики в формате HTML
 func (h *MetricHandler) GetAll(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	metrics, err := h.metricService.GetAll(ctx)
 	if err != nil {
-		logger.Log.Error("Internal server error in GetAll", zap.Error(err))
+		h.logger.Error("Internal server error in GetAll", zap.Error(err))
 		c.String(http.StatusInternalServerError, "Failed to get metrics")
 		return
 	}
 
+	keys := make([]string, 0, len(metrics))
+	for key := range metrics {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	data := responseMetrics{}
+	for _, key := range keys {
+		value, err := h.metricService.FormatMetric(metrics[key])
+		if err != nil {
+			h.logger.Error("Failed to format metric for display", zap.String("metric", key), zap.Error(err))
+			continue
+		}
+		data.Metrics = append(data.Metrics, templateData{Name: key, Value: value})
+	}
+
 	c.Header("Content-Type", "text/html; charset=utf-8")
 
-	err = metricsTemplate.Execute(c.Writer, metrics)
-
-	if err != nil {
-		logger.Log.Error("Internal server error rendering template", zap.Error(err))
+	if err = metricsTemplate.Execute(c.Writer, data); err != nil {
+		h.logger.Error("Internal server error rendering template", zap.Error(err))
 		c.String(http.StatusInternalServerError, "Failed to render page")
 	}
 }
 
+// Update обновляет или создает метрику из URL параметров
 func (h *MetricHandler) Update(c *gin.Context) {
 	ctx := c.Request.Context()
-	metricType := c.Param("type")
-	metricName := c.Param("name")
-	metricValue := c.Param("value")
+	metricType := strings.ToLower(strings.TrimSpace(c.Param("type")))
+	metricName := strings.TrimSpace(c.Param("name"))
+	metricValue := strings.TrimSpace(c.Param("value"))
 
-	if strings.TrimSpace(metricName) == "" {
+	if metricName == "" {
 		c.String(http.StatusNotFound, "The metric name is missing")
 		return
 	}
@@ -123,7 +159,7 @@ func (h *MetricHandler) Update(c *gin.Context) {
 		if errors.Is(err, service.ErrBadMetricType) || errors.Is(err, service.ErrBadMetricValue) {
 			c.String(http.StatusBadRequest, err.Error())
 		} else {
-			logger.Log.Error("Internal server error in Update", zap.Error(err))
+			h.logger.Error("Internal server error in Update", zap.Error(err))
 			c.String(http.StatusInternalServerError, service.ErrInternal.Error())
 		}
 		return
@@ -132,6 +168,7 @@ func (h *MetricHandler) Update(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// UpdateJSON обновляет или создает метрику из JSON тела запроса
 func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto MetricDTO
@@ -152,23 +189,32 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 		return
 	}
 
-	err = h.metricService.UpdateJSON(ctx, metricModel)
-	if err != nil {
-		logger.Log.Error("Internal server error in UpdateJSON", zap.Error(err))
-		c.String(http.StatusInternalServerError, service.ErrInternal.Error())
+	if err = h.metricService.UpdateJSON(ctx, metricModel); err != nil {
+		if errors.Is(err, service.ErrBadMetricValue) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			h.logger.Error("Internal server error in UpdateJSON", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": service.ErrInternal.Error()})
+		}
 		return
 	}
 
 	c.Status(http.StatusOK)
 }
 
+const (
+	// pingDBTimeout таймаут для проверки доступности базы данных
+	pingDBTimeout = 1 * time.Second
+)
+
+// PingDB проверяет доступность базы данных
 func (h *MetricHandler) PingDB(c *gin.Context) {
 	ctx := c.Request.Context()
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, pingDBTimeout)
 	defer cancel()
 
 	if err := h.metricService.PingDB(ctx); err != nil {
-		logger.Log.Error("Database ping failed", zap.Error(err))
+		h.logger.Error("Database ping failed", zap.Error(err))
 		c.String(http.StatusInternalServerError, service.ErrInternal.Error())
 		return
 	}
