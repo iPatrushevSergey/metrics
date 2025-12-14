@@ -7,6 +7,34 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
 
+type metricFileDTO struct {
+	ID    string   `json:"id"`
+	MType string   `json:"type"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+	Hash  string   `json:"hash,omitempty"`
+}
+
+func metricToDTO(m model.Metric) metricFileDTO {
+	return metricFileDTO{
+		ID:    m.ID,
+		MType: m.MType,
+		Delta: m.Delta,
+		Value: m.Value,
+		Hash:  m.Hash,
+	}
+}
+
+func dtoToMetric(dto metricFileDTO) model.Metric {
+	return model.Metric{
+		ID:    dto.ID,
+		MType: dto.MType,
+		Delta: dto.Delta,
+		Value: dto.Value,
+		Hash:  dto.Hash,
+	}
+}
+
 type FileStorage struct {
 	FilePath string
 }
@@ -24,9 +52,9 @@ func (fs *FileStorage) Save(metrics map[string]model.Metric) error {
 	}
 	defer file.Close()
 
-	var metricList []model.Metric
+	var metricList []metricFileDTO
 	for _, m := range metrics {
-		metricList = append(metricList, m)
+		metricList = append(metricList, metricToDTO(m))
 	}
 
 	encoder := json.NewEncoder(file)
@@ -40,10 +68,15 @@ func (fs *FileStorage) Load() ([]model.Metric, error) {
 	}
 	defer file.Close()
 
-	var metrics []model.Metric
+	var dtos []metricFileDTO
 	decoder := json.NewDecoder(file)
-	if err = decoder.Decode(&metrics); err != nil {
+	if err = decoder.Decode(&dtos); err != nil {
 		return nil, err
+	}
+
+	metrics := make([]model.Metric, 0, len(dtos))
+	for _, dto := range dtos {
+		metrics = append(metrics, dtoToMetric(dto))
 	}
 
 	return metrics, nil
