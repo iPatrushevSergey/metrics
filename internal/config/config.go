@@ -104,12 +104,14 @@ type AgentConfig struct {
 	Address        string
 	PollInterval   time.Duration
 	ReportInterval time.Duration
+	UseBatchMode   bool
 }
 
 type agentInternalConfig struct {
 	Address        Address  `env:"ADDRESS"`
 	PollInterval   Duration `env:"POLL_INTERVAL"`
 	ReportInterval Duration `env:"REPORT_INTERVAL"`
+	UseBatchMode   bool     `env:"USE_BATCH_MODE"`
 }
 
 // Environment variables take precedence over flags.
@@ -122,9 +124,11 @@ func LoadAgentConfig() (AgentConfig, error) {
 	cfg.Address = Address{Schema: "http", Host: "127.0.0.1", Port: 8080}
 	cfg.PollInterval = Duration{Duration: 2 * time.Second}
 	cfg.ReportInterval = Duration{Duration: 10 * time.Second}
+	cfg.UseBatchMode = false
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.Var(&cfg.ReportInterval, "r", "frequency of sending metrics (seconds or duration)")
 	fs.Var(&cfg.PollInterval, "p", "frequency of metrics polling (seconds or duration)")
+	fs.BoolVar(&cfg.UseBatchMode, "b", false, "use batch mode for sending metrics (send all metrics in one request)")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -140,6 +144,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 		Address:        cfg.Address.URL(),
 		PollInterval:   cfg.PollInterval.Duration,
 		ReportInterval: cfg.ReportInterval.Duration,
+		UseBatchMode:   cfg.UseBatchMode,
 	}
 
 	return finalCfg, nil
