@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
+	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/service"
 	"go.uber.org/zap"
 )
@@ -54,7 +55,7 @@ func NewMetricHandler(s *service.MetricsService, l logger.Logger) *MetricHandler
 	}
 }
 
-// GetValue возвращает значение метрики в виде строки
+// GetValue returns the metric value as a string
 func (h *MetricHandler) GetValue(c *gin.Context) {
 	ctx := c.Request.Context()
 	metricType := strings.ToLower(strings.TrimSpace(c.Param("type")))
@@ -76,7 +77,7 @@ func (h *MetricHandler) GetValue(c *gin.Context) {
 	c.String(http.StatusOK, "%s", metricVal)
 }
 
-// GetJSON возвращает метрику в формате JSON
+// GetJSON returns the metric in JSON format
 func (h *MetricHandler) GetJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto MetricDTO
@@ -86,7 +87,7 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 		return
 	}
 
-	// Нормализация данных перед передачей в service
+	// Normalization of data before transmission to the service
 	metricType := strings.ToLower(strings.TrimSpace(dto.MType))
 	metricName := strings.TrimSpace(dto.ID)
 
@@ -107,7 +108,7 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
-// GetAll возвращает все метрики в формате HTML
+// GetAll returns all metrics in HTML format
 func (h *MetricHandler) GetAll(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -142,7 +143,7 @@ func (h *MetricHandler) GetAll(c *gin.Context) {
 	}
 }
 
-// Update обновляет или создает метрику из URL параметров
+// Update updates or creates a metric from the URL parameters
 func (h *MetricHandler) Update(c *gin.Context) {
 	ctx := c.Request.Context()
 	metricType := strings.ToLower(strings.TrimSpace(c.Param("type")))
@@ -168,7 +169,7 @@ func (h *MetricHandler) Update(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// UpdateJSON обновляет или создает метрику из JSON тела запроса
+// UpdateJSON updates or creates a metric from the JSON request body
 func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto MetricDTO
@@ -202,12 +203,50 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// UpdatesJSON updates or creates a list of metrics from the JSON request body
+func (h *MetricHandler) UpdatesJSON(c *gin.Context) {
+	ctx := c.Request.Context()
+	var dtos []MetricDTO
+	var metrics []model.Metric
+
+	if err := json.NewDecoder(c.Request.Body).Decode(&dtos); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	for _, dto := range dtos {
+		if strings.TrimSpace(dto.ID) == "" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "the metric name is missing"})
+			return
+		}
+
+		metricModel, err := dtoToModel(dto)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		metrics = append(metrics, metricModel)
+	}
+
+	if err := h.metricService.UpdatesJSON(ctx, metrics); err != nil {
+		if errors.Is(err, service.ErrBadMetricValue) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			h.logger.Error("Internal server error in UpdatesJSON", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": service.ErrInternal.Error()})
+		}
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 const (
-	// pingDBTimeout таймаут для проверки доступности базы данных
+	// pingDBTimeout timeout for checking the availability of the database
 	pingDBTimeout = 1 * time.Second
 )
 
-// PingDB проверяет доступность базы данных
+// PingDB checks the availability of the database
 func (h *MetricHandler) PingDB(c *gin.Context) {
 	ctx := c.Request.Context()
 	ctx, cancel := context.WithTimeout(ctx, pingDBTimeout)
