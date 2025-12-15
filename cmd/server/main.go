@@ -29,9 +29,9 @@ import (
 )
 
 const (
-	// dbPingTimeout таймаут для проверки подключения к базе данных
+	// dbPingTimeout timeout for checking the connection to the database
 	dbPingTimeout = 3 * time.Second
-	// serverShutdownTimeout таймаут для graceful shutdown сервера
+	// serverShutdownTimeout timeout for graceful shutdown server
 	serverShutdownTimeout = 5 * time.Second
 )
 
@@ -141,6 +141,7 @@ func main() {
 	router.GET("/ping", metricHandler.PingDB)
 	router.GET("/", metricHandler.GetAll)
 	router.POST("/update", metricHandler.UpdateJSON)
+	router.POST("/updates", metricHandler.UpdatesJSON)
 	router.POST("/value", metricHandler.GetJSON)
 	router.POST("/update/:type/:name/:value", metricHandler.Update)
 	router.GET("/value/:type/:name", metricHandler.GetValue)
