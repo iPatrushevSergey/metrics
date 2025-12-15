@@ -11,13 +11,13 @@ import (
 )
 
 var (
-	// ErrNotFound возвращается, когда метрика не найдена
+	// ErrNotFound it is returned when the metric is not found
 	ErrNotFound = errors.New("metric not found")
-	// ErrBadMetricValue возвращается, когда значение метрики невалидно
+	// ErrBadMetricValue returned when the metric value is invalid
 	ErrBadMetricValue = errors.New("invalid metric value")
-	// ErrBadMetricType возвращается, когда тип метрики невалиден
+	// ErrBadMetricType returned when the metric type is invalid
 	ErrBadMetricType = errors.New("invalid metric type")
-	// ErrInternal возвращается при внутренних ошибках сервиса
+	// ErrInternal returned in case of internal errors in the service
 	ErrInternal = errors.New("internal service error")
 )
 
@@ -30,7 +30,7 @@ func validateMetricType(mType string) error {
 	}
 }
 
-// FormatMetric форматирует метрику в строковое представление
+// FormatMetric formats the metric into a string representation
 func (s *MetricsService) FormatMetric(metric model.Metric) (string, error) {
 	return formatMetricToStr(metric)
 }
@@ -87,7 +87,7 @@ func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (str
 	return formattedMetric, nil
 }
 
-// GetMetric возвращает метрику по типу и имени
+// GetMetric returns a metric by type and name
 func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (model.Metric, error) {
 	if err := validateMetricType(mType); err != nil {
 		return model.Metric{}, err
@@ -115,7 +115,7 @@ func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (mo
 	return metric, nil
 }
 
-// GetAll возвращает все метрики из хранилища
+// GetAll returns all metrics from storage
 func (s *MetricsService) GetAll(ctx context.Context) (map[string]model.Metric, error) {
 	metrics, err := s.metricRepo.GetAll(ctx)
 	if err != nil {
@@ -125,7 +125,7 @@ func (s *MetricsService) GetAll(ctx context.Context) (map[string]model.Metric, e
 	return metrics, nil
 }
 
-// Update обновляет или создает метрику по типу, имени и значению
+// Update updates or creates a metric by type, name, and value
 func (s *MetricsService) Update(ctx context.Context, mType, mName string, value string) error {
 	if err := validateMetricType(mType); err != nil {
 		return err
@@ -183,7 +183,7 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 	return nil
 }
 
-// UpdateJSON обновляет или создает метрику из доменной модели
+// UpdateJSON updates or creates a metric from the domain model
 func (s *MetricsService) UpdateJSON(ctx context.Context, metric model.Metric) error {
 	if err := validateMetricType(metric.MType); err != nil {
 		return err
@@ -228,7 +228,83 @@ func (s *MetricsService) UpdateJSON(ctx context.Context, metric model.Metric) er
 	return nil
 }
 
-// PingDB проверяет доступность хранилища данных
+// UpdatesJSON updates or creates metrics from the domain model
+func (s *MetricsService) UpdatesJSON(ctx context.Context, metrics []model.Metric) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	createMetrics := make([]model.Metric, 0, len(metrics))
+	updateMetrics := make([]model.Metric, 0, len(metrics))
+
+	// Collecting unique metric IDs
+	idsSet := make(map[string]struct{}, len(metrics))
+	for _, metric := range metrics {
+		idsSet[metric.ID] = struct{}{}
+	}
+
+	ids := make([]string, 0, len(idsSet))
+	for id := range idsSet {
+		ids = append(ids, id)
+	}
+
+	existingMetrics, err := s.metricRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return fmt.Errorf("%w: failed to get metrics batch: %w", ErrInternal, err)
+	}
+
+	for _, metric := range metrics {
+		if err := validateMetricType(metric.MType); err != nil {
+			return err
+		}
+
+		if metric.MType == model.Counter && metric.Delta == nil {
+			return ErrBadMetricValue
+		}
+		if metric.MType == model.Gauge && metric.Value == nil {
+			return ErrBadMetricValue
+		}
+
+		// Determining whether to create a new one or update an existing one
+		existing, found := existingMetrics[metric.ID]
+		if !found {
+			createMetrics = append(createMetrics, metric)
+			continue
+		}
+
+		switch metric.MType {
+		case model.Counter:
+			if metric.Delta != nil {
+				if existing.Delta != nil {
+					newDelta := *existing.Delta + *metric.Delta
+					existing.Delta = &newDelta
+				} else {
+					existing.Delta = metric.Delta
+				}
+			}
+		case model.Gauge:
+			existing.Value = metric.Value
+		}
+
+		updateMetrics = append(updateMetrics, existing)
+	}
+
+	if len(createMetrics) > 0 {
+		if err := s.metricRepo.CreateBatch(ctx, createMetrics); err != nil {
+			return fmt.Errorf("%w: failed to create metrics batch: %w", ErrInternal, err)
+		}
+	}
+
+	if len(updateMetrics) > 0 {
+		if err := s.metricRepo.UpdateBatch(ctx, updateMetrics); err != nil {
+			return fmt.Errorf("%w: failed to update metrics batch: %w", ErrInternal, err)
+		}
+	}
+
+	return nil
+}
+
+// PingDB checks the availability of the data warehouse
 func (s *MetricsService) PingDB(ctx context.Context) error {
 	return s.metricRepo.Ping(ctx)
 }
