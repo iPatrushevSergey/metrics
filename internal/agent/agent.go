@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mailru/easyjson/jwriter"
+
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/model"
@@ -76,7 +78,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			log.Println("The beginning of sending metrics")
-			a.sendAllMetrics(ctx)
+			a.reportMetrics(ctx)
 		case <-ctx.Done():
 			log.Println("The metrics sender has been stopped")
 			return
@@ -84,8 +86,24 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 	}
 }
 
+// reportMetrics selects the mode of sending metrics: single or batch
+func (a *Agent) reportMetrics(ctx context.Context) {
+	if a.config.UseBatchMode {
+		log.Println("Sending metrics in batch mode")
+		if err := a.sendAllMetricsBatch(ctx); err != nil {
+			if errors.Is(err, context.Canceled) {
+				log.Println("Sending metrics batch canceled")
+				return
+			}
+			log.Printf("Error sending metrics batch: %v\n", err)
+		}
+		return
+	}
+
+	a.sendAllMetrics(ctx)
+}
+
 func (a *Agent) sendAllMetrics(ctx context.Context) {
-	// TODO: it makes sense to implement query bundling
 	a.mu.RLock()
 	ms := a.memStats
 	cs := a.customStats
@@ -204,6 +222,127 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 	}
 
 	log.Printf("Successfully sent: %s. Status: %s\n", mName, response.Status)
+	return nil
+}
+
+// sendAllMetricsBatch collects all metrics and sends them in one batch request
+func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		log.Println("The metrics sender has been stopped before batch sending")
+		return ctx.Err()
+	default:
+	}
+
+	a.mu.RLock()
+	ms := a.memStats
+	cs := a.customStats
+	a.mu.RUnlock()
+
+	gaugeMetrics := getGaugeMetrics(&ms, &cs)
+	counterMetrics := getCounterMetrics(&ms, &cs)
+
+	total := len(gaugeMetrics) + len(counterMetrics)
+	if total == 0 {
+		log.Println("No metrics to send in batch")
+		return nil
+	}
+
+	metrics := make([]handler.MetricDTO, 0, total)
+
+	for name, value := range gaugeMetrics {
+		val := value
+		metrics = append(metrics, handler.MetricDTO{
+			ID:    name,
+			MType: model.Gauge,
+			Value: &val,
+		})
+	}
+
+	for name, value := range counterMetrics {
+		val := value
+		metrics = append(metrics, handler.MetricDTO{
+			ID:    name,
+			MType: model.Counter,
+			Delta: &val,
+		})
+	}
+
+	return a.sendMetricsBatchRequest(ctx, metrics)
+}
+
+// sendMetricsBatchRequest sends a batch of metrics to the endpoint /updates with gzip compression
+func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.MetricDTO) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	url := fmt.Sprintf("%s/updates", a.config.Address)
+
+	// Request body formation
+	var w jwriter.Writer
+	w.RawByte('[')
+	for i, m := range metrics {
+		if i > 0 {
+			w.RawByte(',')
+		}
+		m.MarshalEasyJSON(&w)
+	}
+	w.RawByte(']')
+
+	bodyBytes := w.Buffer.BuildBytes()
+	if w.Error != nil {
+		return fmt.Errorf("error marshaling metrics batch body: %w", w.Error)
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(bodyBytes); err != nil {
+		return fmt.Errorf("error compressing batch body: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("error closing gzip writer for batch: %w", err)
+	}
+
+	// Request formation
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
+	if err != nil {
+		return fmt.Errorf("request creation error for batch: %w", err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Encoding", "gzip")
+	req.Header.Add("Accept-Encoding", "gzip")
+
+	// Sending a request
+	response, err := a.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request sending error for batch: %w", err)
+	}
+	defer response.Body.Close()
+
+	// Unpacking the response if necessary
+	var reader io.ReadCloser
+	switch response.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(response.Body)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip reader for batch response: %w", err)
+		}
+		defer reader.Close()
+	default:
+		reader = response.Body
+	}
+
+	// Response processing
+	if response.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			log.Printf("Error reading the batch response body: %v\n", err)
+		}
+		return fmt.Errorf("failed batch status code: %s, body: %s", response.Status, string(body))
+	}
+
+	log.Printf("Successfully sent batch of %d metrics. Status: %s\n", len(metrics), response.Status)
 	return nil
 }
 
