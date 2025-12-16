@@ -234,25 +234,9 @@ func (s *MetricsService) UpdatesJSON(ctx context.Context, metrics []model.Metric
 		return nil
 	}
 
-	createMetrics := make([]model.Metric, 0, len(metrics))
-	updateMetrics := make([]model.Metric, 0, len(metrics))
-
-	// Collecting unique metric IDs
-	idsSet := make(map[string]struct{}, len(metrics))
-	for _, metric := range metrics {
-		idsSet[metric.ID] = struct{}{}
-	}
-
-	ids := make([]string, 0, len(idsSet))
-	for id := range idsSet {
-		ids = append(ids, id)
-	}
-
-	existingMetrics, err := s.metricRepo.GetByIDs(ctx, ids)
-	if err != nil {
-		return fmt.Errorf("%w: failed to get metrics batch: %w", ErrInternal, err)
-	}
-
+	// Combining duplicates. For counter, we sum the deltas,
+	// for gauge we overwrite the last value.
+	mergedByID := make(map[string]model.Metric, len(metrics))
 	for _, metric := range metrics {
 		if err := validateMetricType(metric.MType); err != nil {
 			return err
@@ -265,6 +249,49 @@ func (s *MetricsService) UpdatesJSON(ctx context.Context, metrics []model.Metric
 			return ErrBadMetricValue
 		}
 
+		existing, exists := mergedByID[metric.ID]
+		if !exists {
+			mergedByID[metric.ID] = metric
+			continue
+		}
+
+		// Merge with previously seen metric with the same ID
+		switch metric.MType {
+		case model.Counter:
+			if metric.Delta != nil {
+				var current int64
+				if existing.Delta != nil {
+					current = *existing.Delta
+				}
+				newDelta := current + *metric.Delta
+				existing.Delta = &newDelta
+			}
+		case model.Gauge:
+			existing.Value = metric.Value
+		}
+
+		mergedByID[metric.ID] = existing
+	}
+
+	uniqueMetrics := make([]model.Metric, 0, len(mergedByID))
+	for _, m := range mergedByID {
+		uniqueMetrics = append(uniqueMetrics, m)
+	}
+
+	createMetrics := make([]model.Metric, 0, len(uniqueMetrics))
+	updateMetrics := make([]model.Metric, 0, len(uniqueMetrics))
+
+	ids := make([]string, 0, len(mergedByID))
+	for id := range mergedByID {
+		ids = append(ids, id)
+	}
+
+	existingMetrics, err := s.metricRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return fmt.Errorf("%w: failed to get metrics batch: %w", ErrInternal, err)
+	}
+
+	for _, metric := range uniqueMetrics {
 		// Determining whether to create a new one or update an existing one
 		existing, found := existingMetrics[metric.ID]
 		if !found {
