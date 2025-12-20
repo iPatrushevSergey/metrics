@@ -160,6 +160,7 @@ type ServerConfig struct {
 	FileStoragePath string
 	Restore         bool
 	DatabaseDSN     string
+	EnableRetry     bool // Enable retry logic for PostgreSQL operations
 }
 
 func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -178,6 +179,7 @@ type serverInternalConfig struct {
 	FileStoragePath string   `env:"FILE_STORAGE_PATH"`
 	Restore         bool     `env:"RESTORE"`
 	DatabaseDSN     string   `env:"DATABASE_DSN"`
+	EnableRetry     bool     `env:"ENABLE_RETRY"`
 }
 
 // Environment variables take precedence over flags.
@@ -189,11 +191,18 @@ func LoadServerConfig() (ServerConfig, error) {
 	// Default
 	cfg.Address = Address{Host: "127.0.0.1", Port: 8080}
 	cfg.StoreInterval = Duration{Duration: 300 * time.Second}
+	cfg.EnableRetry = true
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.StringVar(&cfg.LogLevel, "l", "info", "logging level")
 	fs.Var(&cfg.StoreInterval, "i", "server data save interval (seconds or duration)")
 	fs.StringVar(&cfg.FileStoragePath, "f", "metrics.json", "file path")
 	fs.BoolVar(&cfg.Restore, "r", true, "load data from file at startup")
+	fs.BoolVar(
+		&cfg.EnableRetry,
+		"retry",
+		true,
+		"enable retry logic for PostgreSQL operations (3 retries with intervals 1s, 3s, 5s)",
+	)
 	fs.StringVar(
 		&cfg.DatabaseDSN, "d", "",
 		"database dsn, example: postgres://user:password@localhost:5432/db?sslmode=disable",
@@ -216,6 +225,7 @@ func LoadServerConfig() (ServerConfig, error) {
 		FileStoragePath: cfg.FileStoragePath,
 		Restore:         cfg.Restore,
 		DatabaseDSN:     cfg.DatabaseDSN,
+		EnableRetry:     cfg.EnableRetry,
 	}
 
 	return finalCfg, nil
