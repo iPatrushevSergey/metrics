@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -27,9 +26,10 @@ type CustomStats struct {
 }
 
 type Agent struct {
-	config config.AgentConfig
-	client *http.Client
-	mu     sync.RWMutex // The pattern "Critical Section"
+	config      config.AgentConfig
+	client      *http.Client
+	mu          sync.RWMutex // The pattern "Critical Section"
+	retryConfig RetryConfig  // Retry configuration for HTTP requests
 
 	// Metrics
 	memStats    runtime.MemStats
@@ -39,8 +39,9 @@ type Agent struct {
 // The pattern "Constructor"
 func NewAgent(config config.AgentConfig) *Agent {
 	return &Agent{
-		config: config,
-		client: &http.Client{Timeout: 2 * time.Second},
+		config:      config,
+		client:      &http.Client{Timeout: 2 * time.Second},
+		retryConfig: DefaultRetryConfig(), // Retry по умолчанию включен
 	}
 }
 
@@ -174,26 +175,8 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 		return fmt.Errorf("error marshaling metric body: %w", err)
 	}
 
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	if _, err := gz.Write(bodyBytes); err != nil {
-		return fmt.Errorf("error compressing body: %w", err)
-	}
-	if err := gz.Close(); err != nil {
-		return fmt.Errorf("error closing gzip writer: %w", err)
-	}
-
-	// Request formation
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
-	if err != nil {
-		return fmt.Errorf("request creation error: %w", err)
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Content-Encoding", "gzip")
-	req.Header.Add("Accept-Encoding", "gzip")
-
-	// Send request
-	response, err := a.client.Do(req)
+	// Send request with retry logic
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes)
 	if err != nil {
 		return fmt.Errorf("request sending error: %w", err)
 	}
@@ -295,26 +278,8 @@ func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.M
 		return fmt.Errorf("error marshaling metrics batch body: %w", w.Error)
 	}
 
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	if _, err := gz.Write(bodyBytes); err != nil {
-		return fmt.Errorf("error compressing batch body: %w", err)
-	}
-	if err := gz.Close(); err != nil {
-		return fmt.Errorf("error closing gzip writer for batch: %w", err)
-	}
-
-	// Request formation
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
-	if err != nil {
-		return fmt.Errorf("request creation error for batch: %w", err)
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Content-Encoding", "gzip")
-	req.Header.Add("Accept-Encoding", "gzip")
-
-	// Sending a request
-	response, err := a.client.Do(req)
+	// Send request with retry logic
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes)
 	if err != nil {
 		return fmt.Errorf("request sending error for batch: %w", err)
 	}
