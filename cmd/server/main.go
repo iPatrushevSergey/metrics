@@ -87,7 +87,16 @@ func main() {
 			logger.Log.Fatal("Unable to connect to database", zap.Error(err))
 		}
 
-		repo = postgres.NewPostgresMetricRepository(db)
+		// Creating a basic PostgreSQL repository
+		baseRepo := postgres.NewPostgresMetricRepository(db)
+
+		// Optionally wrap in retry decorator if enabled in config
+		if cfg.EnableRetry {
+			logger.Log.Debug("Retry logic enabled for PostgreSQL operations")
+			repo = postgres.NewRetryRepository(baseRepo, postgres.DefaultRetryConfig())
+		} else {
+			repo = baseRepo
+		}
 		fs = nil
 	} else {
 		// Inmemory
