@@ -79,23 +79,24 @@ func sendRequestWithRetry(
 	url string,
 	bodyBytes []byte,
 ) (*http.Response, error) {
+	// Compress body once before retry loop
+	var compressedBuf bytes.Buffer
+	gz := gzip.NewWriter(&compressedBuf)
+	if _, err := gz.Write(bodyBytes); err != nil {
+		return nil, fmt.Errorf("error compressing body: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return nil, fmt.Errorf("error closing gzip writer: %w", err)
+	}
+	compressedBody := compressedBuf.Bytes()
+
 	backoffStrategy := &fixedIntervalBackoff{
 		intervals:  config.Intervals,
 		maxRetries: config.MaxRetries,
 	}
 
 	response, err := backoff.Retry(ctx, func() (*http.Response, error) {
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		if _, err := gz.Write(bodyBytes); err != nil {
-			return nil, backoff.Permanent(fmt.Errorf("error compressing body: %w", err))
-		}
-		if err := gz.Close(); err != nil {
-			return nil, backoff.Permanent(fmt.Errorf("error closing gzip writer: %w", err))
-		}
-
-		// Request formation
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(compressedBody))
 		if err != nil {
 			return nil, backoff.Permanent(fmt.Errorf("request creation error: %w", err))
 		}
