@@ -18,6 +18,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/model"
+	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
 type CustomStats struct {
@@ -28,8 +29,8 @@ type CustomStats struct {
 type Agent struct {
 	config      config.AgentConfig
 	client      *http.Client
-	mu          sync.RWMutex // The pattern "Critical Section"
-	retryConfig RetryConfig  // Retry configuration for HTTP requests
+	mu          sync.RWMutex      // The pattern "Critical Section"
+	retryConfig retry.RetryConfig // Retry configuration for HTTP requests
 
 	// Metrics
 	memStats    runtime.MemStats

@@ -2,36 +2,27 @@ package postgres
 
 import (
 	"context"
-	"time"
 
 	"github.com/cenkalti/backoff/v5"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository"
+	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
-// RetryConfig configuration for retry logic
-type RetryConfig struct {
-	MaxRetries uint
-	Intervals  []time.Duration
-}
-
 // DefaultRetryConfig returns the default configuration: 3 repetitions with intervals of 1s, 3s, 5s
-func DefaultRetryConfig() RetryConfig {
-	return RetryConfig{
-		MaxRetries: 3,
-		Intervals:  []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second},
-	}
+func DefaultRetryConfig() retry.RetryConfig {
+	return retry.DefaultRetryConfig()
 }
 
 // RetryRepository a decorator for adding retry logic to a repository
 type RetryRepository struct {
 	repo       repository.MetricRepository
-	config     RetryConfig
+	config     retry.RetryConfig
 	classifier *PostgresErrorClassifier
 }
 
 // NewRetryRepository creates a new repository with retry logic
-func NewRetryRepository(repo repository.MetricRepository, config RetryConfig) repository.MetricRepository {
+func NewRetryRepository(repo repository.MetricRepository, config retry.RetryConfig) repository.MetricRepository {
 	return &RetryRepository{
 		repo:       repo,
 		config:     config,
@@ -41,10 +32,7 @@ func NewRetryRepository(repo repository.MetricRepository, config RetryConfig) re
 
 // retry performs an operation with retry logic for retriable errors
 func (r *RetryRepository) retry(ctx context.Context, operation func() error) error {
-	backoffStrategy := &fixedIntervalBackoff{
-		intervals:  r.config.Intervals,
-		maxRetries: r.config.MaxRetries,
-	}
+	backoffStrategy := retry.NewFixedIntervalBackoff(r.config)
 
 	_, err := backoff.Retry(ctx, func() (struct{}, error) {
 		err := operation()
@@ -62,32 +50,6 @@ func (r *RetryRepository) retry(ctx context.Context, operation func() error) err
 	}, backoff.WithBackOff(backoffStrategy), backoff.WithMaxTries(r.config.MaxRetries+1))
 
 	return err
-}
-
-// fixedIntervalBackoff implements backoff.BackOff with fixed intervals
-type fixedIntervalBackoff struct {
-	intervals  []time.Duration
-	maxRetries uint
-	attempt    uint
-}
-
-func (b *fixedIntervalBackoff) NextBackOff() time.Duration {
-	if b.attempt >= b.maxRetries {
-		return backoff.Stop
-	}
-
-	idx := int(b.attempt)
-	if idx >= len(b.intervals) {
-		idx = len(b.intervals) - 1
-	}
-
-	interval := b.intervals[idx]
-	b.attempt++
-	return interval
-}
-
-func (b *fixedIntervalBackoff) Reset() {
-	b.attempt = 0
 }
 
 func (r *RetryRepository) GetByID(ctx context.Context, id string) (model.Metric, error) {

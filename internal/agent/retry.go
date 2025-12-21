@@ -6,26 +6,17 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/cenkalti/backoff/v5"
+	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
-// RetryConfig configuration for the retry logic of HTTP requests
-type RetryConfig struct {
-	MaxRetries uint
-	Intervals  []time.Duration
-}
-
 // DefaultRetryConfig returns the default configuration: 3 repetitions with 1s, 3s, 5s intervals
-func DefaultRetryConfig() RetryConfig {
-	return RetryConfig{
-		MaxRetries: 3,
-		Intervals:  []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second},
-	}
+func DefaultRetryConfig() retry.RetryConfig {
+	return retry.DefaultRetryConfig()
 }
 
-// isHTTPErrorRetriable determines whether the HTTP request can be repeated for this error
+// isHTTPStatusRetriable determines whether the HTTP request can be repeated for this error
 func isHTTPStatusRetriable(statusCode int) bool {
 	switch {
 	case statusCode >= 500:
@@ -43,39 +34,11 @@ func isHTTPStatusRetriable(statusCode int) bool {
 	}
 }
 
-// fixedIntervalBackoff implements backoff.BackOff at fixed intervals for HTTP
-type fixedIntervalBackoff struct {
-	intervals  []time.Duration
-	maxRetries uint
-	attempt    uint
-}
-
-// NextBackOff returns the next wait duration for a retry attempt, or backoff.Stop if no more retries remain.
-func (b *fixedIntervalBackoff) NextBackOff() time.Duration {
-	if b.attempt >= b.maxRetries {
-		return backoff.Stop
-	}
-
-	idx := int(b.attempt)
-	if idx >= len(b.intervals) {
-		idx = len(b.intervals) - 1
-	}
-
-	interval := b.intervals[idx]
-	b.attempt++
-	return interval
-}
-
-// Reset resets the number of retry attempts in the backoff strategy to zero.
-func (b *fixedIntervalBackoff) Reset() {
-	b.attempt = 0
-}
-
 // sendRequestWithRetry sends an HTTP request with retry logic using a fixed interval backoff strategy.
 func sendRequestWithRetry(
 	ctx context.Context,
 	client *http.Client,
-	config RetryConfig,
+	config retry.RetryConfig,
 	url string,
 	bodyBytes []byte,
 ) (*http.Response, error) {
@@ -90,10 +53,7 @@ func sendRequestWithRetry(
 	}
 	compressedBody := compressedBuf.Bytes()
 
-	backoffStrategy := &fixedIntervalBackoff{
-		intervals:  config.Intervals,
-		maxRetries: config.MaxRetries,
-	}
+	backoffStrategy := retry.NewFixedIntervalBackoff(config)
 
 	response, err := backoff.Retry(ctx, func() (*http.Response, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(compressedBody))
