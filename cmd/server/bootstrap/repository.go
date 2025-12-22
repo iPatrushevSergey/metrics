@@ -7,6 +7,8 @@ import (
 
 	"go.uber.org/zap"
 
+	_ "github.com/jackc/pgx/v5/stdlib" // Register pgx driver for database/sql
+
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
