@@ -22,6 +22,7 @@ func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface
 // SetupRouter configures and returns the HTTP router with all routes and middleware
 func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig) *gin.Engine {
 	router := gin.New()
+	router.RedirectFixedPath = true
 	router.Use(gin.Recovery())
 	router.Use(middleware.GzipGinMiddleware())
 	router.Use(middleware.HashMiddleware(cfg.Key))
