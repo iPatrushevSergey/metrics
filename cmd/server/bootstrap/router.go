@@ -23,15 +23,14 @@ func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface
 func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig) *gin.Engine {
 	router := gin.New()
 	// router.RedirectTrailingSlash = false
-	// router.RedirectFixedPath = false
+	router.Use(gin.Recovery())
 	// router.Use(func(c *gin.Context) {
 	// 	path := c.Request.URL.Path
-	// 	if path != "/" && strings.HasSuffix(path, "/") {
+	// 	if path != "/" && strings.HasSuffix(path, "/") && !strings.Contains(path, ":") {
 	// 		c.Request.URL.Path = strings.TrimSuffix(path, "/")
 	// 	}
 	// 	c.Next()
 	// })
-	router.Use(gin.Recovery())
 	router.Use(middleware.GzipGinMiddleware())
 	router.Use(middleware.HashMiddleware(cfg.Key))
 	router.Use(middleware.LoggerMiddleware())
@@ -42,15 +41,10 @@ func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig) 
 
 	router.GET("/ping", metricHandler.PingDB)
 	router.GET("/", metricHandler.GetAll)
-	router.POST("/update", metricHandler.UpdateJSON)
 	router.POST("/update/", metricHandler.UpdateJSON)
-	router.POST("/updates", metricHandler.UpdatesJSON)
 	router.POST("/updates/", metricHandler.UpdatesJSON)
-	router.POST("/value", metricHandler.GetJSON)
 	router.POST("/value/", metricHandler.GetJSON)
-	router.POST("/update/:type/:name/:value", metricHandler.Update)
 	router.POST("/update/:type/:name/:value/", metricHandler.Update)
-	router.GET("/value/:type/:name", metricHandler.GetValue)
 	router.GET("/value/:type/:name/", metricHandler.GetValue)
 
 	return router
