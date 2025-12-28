@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/cenkalti/backoff/v5"
+	"github.com/iPatrushevSergey/metrics/internal/hash"
 	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
@@ -41,6 +42,7 @@ func sendRequestWithRetry(
 	config retry.RetryConfig,
 	url string,
 	bodyBytes []byte,
+	key string,
 ) (*http.Response, error) {
 	// Compress body once before retry loop
 	var compressedBuf bytes.Buffer
@@ -63,6 +65,11 @@ func sendRequestWithRetry(
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Content-Encoding", "gzip")
 		req.Header.Add("Accept-Encoding", "gzip")
+
+		if key != "" {
+			hashValue := hash.CalculateHash(bodyBytes, key)
+			req.Header.Add("HashSHA256", hashValue)
+		}
 
 		// Send request
 		resp, err := client.Do(req)
