@@ -8,64 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-/////////// Writer /////////////
-
-type compressWriter struct {
-	gin.ResponseWriter
-	zw *gzip.Writer
-
-	statusCode     int
-	wroteHeader    bool
-	shouldCompress bool
-}
-
-func newCompressWriter(w gin.ResponseWriter) *compressWriter {
-	return &compressWriter{
-		ResponseWriter: w,
-		zw:             gzip.NewWriter(w),
-		statusCode:     http.StatusOK,
-	}
-}
-
-func (c *compressWriter) WriteHeader(statusCode int) {
-	if c.wroteHeader {
-		return
-	}
-	c.statusCode = statusCode
-}
-
-func (c *compressWriter) Write(p []byte) (int, error) {
-	if !c.wroteHeader {
-		contentType := c.Header().Get("Content-Type")
-
-		if strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "text/html") {
-			c.shouldCompress = true
-			c.Header().Set("Content-Encoding", "gzip")
-		}
-		c.ResponseWriter.WriteHeader(c.statusCode)
-		c.wroteHeader = true
-	}
-
-	if c.shouldCompress {
-		return c.zw.Write(p)
-	}
-
-	return c.ResponseWriter.Write(p)
-}
-
-func (c *compressWriter) WriteString(s string) (int, error) {
-	return c.Write([]byte(s))
-}
-
-func (c *compressWriter) Close() error {
-	if c.shouldCompress {
-		return c.zw.Close()
-	}
-	return nil
-}
-
-///////// Middleware ///////////
-
+// GzipMiddleware middleware for gzip compression
 func GzipGinMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Incoming Request Processing (Decompress)
@@ -90,7 +33,7 @@ func GzipGinMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		cw := newCompressWriter(c.Writer)
+		cw := newCompressResponseWriter(c.Writer)
 		defer cw.Close()
 
 		originalWriter := c.Writer
@@ -102,4 +45,64 @@ func GzipGinMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// compressResponseWriter writer for gzip compression
+type compressResponseWriter struct {
+	gin.ResponseWriter
+	zw *gzip.Writer
+
+	statusCode     int
+	wroteHeader    bool
+	shouldCompress bool
+}
+
+// newCompressResponseWriter new writer for gzip compression
+func newCompressResponseWriter(w gin.ResponseWriter) *compressResponseWriter {
+	return &compressResponseWriter{
+		ResponseWriter: w,
+		zw:             gzip.NewWriter(w),
+		statusCode:     http.StatusOK,
+	}
+}
+
+// WriteHeader write header for gzip compression
+func (c *compressResponseWriter) WriteHeader(statusCode int) {
+	if c.wroteHeader {
+		return
+	}
+	c.statusCode = statusCode
+}
+
+// Write write data for gzip compression
+func (c *compressResponseWriter) Write(p []byte) (int, error) {
+	if !c.wroteHeader {
+		contentType := c.Header().Get("Content-Type")
+
+		if strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "text/html") {
+			c.shouldCompress = true
+			c.Header().Set("Content-Encoding", "gzip")
+		}
+		c.ResponseWriter.WriteHeader(c.statusCode)
+		c.wroteHeader = true
+	}
+
+	if c.shouldCompress {
+		return c.zw.Write(p)
+	}
+
+	return c.ResponseWriter.Write(p)
+}
+
+// WriteString write string for gzip compression
+func (c *compressResponseWriter) WriteString(s string) (int, error) {
+	return c.Write([]byte(s))
+}
+
+// Close close writer for gzip compression
+func (c *compressResponseWriter) Close() error {
+	if c.shouldCompress {
+		return c.zw.Close()
+	}
+	return nil
 }
