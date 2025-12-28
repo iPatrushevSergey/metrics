@@ -25,8 +25,7 @@ func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface
 func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig) *gin.Engine {
 	router := gin.New()
 	router.RedirectTrailingSlash = false
-	router.RedirectFixedPath = true
-	router.Use(gin.Recovery())
+	router.RedirectFixedPath = false
 	router.Use(func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if path != "/" && strings.HasSuffix(path, "/") {
@@ -34,6 +33,7 @@ func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig) 
 		}
 		c.Next()
 	})
+	router.Use(gin.Recovery())
 	router.Use(middleware.GzipGinMiddleware())
 	router.Use(middleware.HashMiddleware(cfg.Key))
 	router.Use(middleware.LoggerMiddleware())
