@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	gojson "github.com/goccy/go-json"
@@ -22,8 +24,16 @@ func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface
 // SetupRouter configures and returns the HTTP router with all routes and middleware
 func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig) *gin.Engine {
 	router := gin.New()
+	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = true
 	router.Use(gin.Recovery())
+	router.Use(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		if path != "/" && strings.HasSuffix(path, "/") {
+			c.Request.URL.Path = strings.TrimSuffix(path, "/")
+		}
+		c.Next()
+	})
 	router.Use(middleware.GzipGinMiddleware())
 	router.Use(middleware.HashMiddleware(cfg.Key))
 	router.Use(middleware.LoggerMiddleware())
