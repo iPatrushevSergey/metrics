@@ -177,7 +177,7 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 	}
 
 	// Send request with retry logic
-	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes)
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key)
 	if err != nil {
 		return fmt.Errorf("request sending error: %w", err)
 	}
@@ -280,7 +280,7 @@ func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.M
 	}
 
 	// Send request with retry logic
-	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes)
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key)
 	if err != nil {
 		return fmt.Errorf("request sending error for batch: %w", err)
 	}
