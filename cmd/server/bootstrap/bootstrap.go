@@ -26,7 +26,7 @@ func InitializeApp(cfg config.ServerConfig, loggerAdapter logger.Logger) (*App, 
 	metricHandler := handler.NewMetricHandler(metricService, loggerAdapter)
 
 	// Setup router
-	router := SetupRouter(metricHandler)
+	router := SetupRouter(metricHandler, cfg)
 
 	// Create HTTP server
 	server := &http.Server{
