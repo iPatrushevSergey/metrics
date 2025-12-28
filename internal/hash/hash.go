@@ -27,13 +27,12 @@ func VerifyHash(body []byte, key string, providedHash string) error {
 	}
 
 	if providedHash == "" {
-		return fmt.Errorf("hash header is missing")
+		return nil
 	}
 
 	calculatedHash := CalculateHash(body, key)
 	if calculatedHash != providedHash {
 		return fmt.Errorf("hash mismatch: expected %s, got %s", calculatedHash, providedHash)
 	}
-
 	return nil
 }
