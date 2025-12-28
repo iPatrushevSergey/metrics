@@ -65,6 +65,7 @@ type hashResponseWriter struct {
 	wroteHeader bool
 }
 
+// newHashResponseWriter new writer for hash calculation
 func newHashResponseWriter(w gin.ResponseWriter, key string) *hashResponseWriter {
 	return &hashResponseWriter{
 		ResponseWriter: w,
@@ -74,6 +75,7 @@ func newHashResponseWriter(w gin.ResponseWriter, key string) *hashResponseWriter
 	}
 }
 
+// WriteHeader write header for hash calculation
 func (w *hashResponseWriter) WriteHeader(statusCode int) {
 	if w.wroteHeader {
 		return
@@ -81,6 +83,7 @@ func (w *hashResponseWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 }
 
+// Write write data for hash calculation
 func (w *hashResponseWriter) Write(p []byte) (int, error) {
 	if !w.wroteHeader {
 		w.body.Write(p)
@@ -94,6 +97,7 @@ func (w *hashResponseWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
+// WriteString write string for hash calculation
 func (w *hashResponseWriter) WriteString(s string) (int, error) {
 	return w.Write([]byte(s))
 }
