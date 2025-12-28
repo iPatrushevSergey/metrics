@@ -105,6 +105,7 @@ type AgentConfig struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	UseBatchMode   bool
+	Key            string // Key for hash calculation
 }
 
 type agentInternalConfig struct {
@@ -112,6 +113,7 @@ type agentInternalConfig struct {
 	PollInterval   Duration `env:"POLL_INTERVAL"`
 	ReportInterval Duration `env:"REPORT_INTERVAL"`
 	UseBatchMode   bool     `env:"USE_BATCH_MODE"`
+	Key            string   `env:"KEY"`
 }
 
 // Environment variables take precedence over flags.
@@ -125,10 +127,12 @@ func LoadAgentConfig() (AgentConfig, error) {
 	cfg.PollInterval = Duration{Duration: 2 * time.Second}
 	cfg.ReportInterval = Duration{Duration: 10 * time.Second}
 	cfg.UseBatchMode = false
+	cfg.Key = ""
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.Var(&cfg.ReportInterval, "r", "frequency of sending metrics (seconds or duration)")
 	fs.Var(&cfg.PollInterval, "p", "frequency of metrics polling (seconds or duration)")
 	fs.BoolVar(&cfg.UseBatchMode, "b", false, "use batch mode for sending metrics (send all metrics in one request)")
+	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -145,6 +149,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 		PollInterval:   cfg.PollInterval.Duration,
 		ReportInterval: cfg.ReportInterval.Duration,
 		UseBatchMode:   cfg.UseBatchMode,
+		Key:            cfg.Key,
 	}
 
 	return finalCfg, nil
@@ -160,7 +165,8 @@ type ServerConfig struct {
 	FileStoragePath string
 	Restore         bool
 	DatabaseDSN     string
-	EnableRetry     bool // Enable retry logic for PostgreSQL operations
+	EnableRetry     bool   // Enable retry logic for PostgreSQL operations
+	Key             string // Key for hash calculation
 }
 
 func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -180,6 +186,7 @@ type serverInternalConfig struct {
 	Restore         bool     `env:"RESTORE"`
 	DatabaseDSN     string   `env:"DATABASE_DSN"`
 	EnableRetry     bool     `env:"ENABLE_RETRY"`
+	Key             string   `env:"KEY"`
 }
 
 // Environment variables take precedence over flags.
@@ -192,6 +199,7 @@ func LoadServerConfig() (ServerConfig, error) {
 	cfg.Address = Address{Host: "127.0.0.1", Port: 8080}
 	cfg.StoreInterval = Duration{Duration: 300 * time.Second}
 	cfg.EnableRetry = true
+	cfg.Key = ""
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.StringVar(&cfg.LogLevel, "l", "info", "logging level")
 	fs.Var(&cfg.StoreInterval, "i", "server data save interval (seconds or duration)")
@@ -207,6 +215,7 @@ func LoadServerConfig() (ServerConfig, error) {
 		&cfg.DatabaseDSN, "d", "",
 		"database dsn, example: postgres://user:password@localhost:5432/db?sslmode=disable",
 	)
+	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -226,6 +235,7 @@ func LoadServerConfig() (ServerConfig, error) {
 		Restore:         cfg.Restore,
 		DatabaseDSN:     cfg.DatabaseDSN,
 		EnableRetry:     cfg.EnableRetry,
+		Key:             cfg.Key,
 	}
 
 	return finalCfg, nil
