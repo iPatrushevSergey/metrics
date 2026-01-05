@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/mailru/easyjson/jwriter"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
@@ -26,27 +28,44 @@ type CustomStats struct {
 	RandomValue float64
 }
 
+type GopsutilStats struct {
+	TotalMemory    float64
+	FreeMemory     float64
+	CPUutilization []float64
+}
+
 type Agent struct {
 	config      config.AgentConfig
 	client      *http.Client
-	mu          sync.RWMutex      // The pattern "Critical Section"
+	mu          sync.RWMutex      
 	retryConfig retry.RetryConfig // Retry configuration for HTTP requests
 
 	// Metrics
-	memStats    runtime.MemStats
-	customStats CustomStats
+	memStats      runtime.MemStats
+	customStats   CustomStats
+	gopsutilStats GopsutilStats
+
+	// Worker pool
+	jobs           chan MetricTask
+	results        chan error
+	workersStarted bool
+	workersWg      sync.WaitGroup
 }
 
-// The pattern "Constructor"
 func NewAgent(config config.AgentConfig) *Agent {
 	return &Agent{
 		config:      config,
 		client:      &http.Client{Timeout: 2 * time.Second},
-		retryConfig: DefaultRetryConfig(), // Retry по умолчанию включен
+		retryConfig: DefaultRetryConfig(),
 	}
 }
 
-// The pattern "Worker"
+// Stop stops the agent's workers
+func (a *Agent) Stop() {
+	a.stopWorkers()
+}
+
+// PollMetrics collects go runtime and custom metrics
 func (a *Agent) PollMetrics(ctx context.Context) {
 	ticker := time.NewTicker(a.config.PollInterval)
 	defer ticker.Stop()
@@ -70,7 +89,43 @@ func (a *Agent) PollMetrics(ctx context.Context) {
 	}
 }
 
-// The pattern "Worker"
+// PollGopsutilMetrics collects gopsutil metrics
+func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
+	ticker := time.NewTicker(a.config.PollInterval)
+	defer ticker.Stop()
+
+	log.Println("The gopsutil metric collector is running")
+	for {
+		select {
+		case <-ticker.C:
+			a.mu.Lock()
+
+			v, err := mem.VirtualMemory()
+			if err != nil {
+				log.Printf("Error getting memory stats: %v\n", err)
+			} else {
+				a.gopsutilStats.TotalMemory = float64(v.Total)
+				a.gopsutilStats.FreeMemory = float64(v.Free)
+			}
+
+			percents, err := cpu.Percent(time.Second, true)
+			if err != nil {
+				log.Printf("Error getting CPU stats: %v\n", err)
+				a.gopsutilStats.CPUutilization = []float64{}
+			} else {
+				a.gopsutilStats.CPUutilization = percents
+			}
+
+			a.mu.Unlock()
+			log.Println("The gopsutil metrics have been updated")
+		case <-ctx.Done():
+			log.Println("The gopsutil metric collector has been stopped")
+			return
+		}
+	}
+}
+
+// ReportMetrics report metrics
 func (a *Agent) ReportMetrics(ctx context.Context) {
 	ticker := time.NewTicker(a.config.ReportInterval)
 	defer ticker.Stop()
@@ -105,13 +160,110 @@ func (a *Agent) reportMetrics(ctx context.Context) {
 	a.sendAllMetrics(ctx)
 }
 
+// MetricTask represents a task for sending a single metric
+type MetricTask struct {
+	MType  string
+	MName  string
+	MValue interface{}
+}
+
+// startWorkers starting workers
+func (a *Agent) startWorkers(ctx context.Context) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.workersStarted {
+		return
+	}
+
+	workerCount := a.config.RateLimit
+	if workerCount <= 0 {
+		return
+	}
+
+	a.jobs = make(chan MetricTask, 100)
+	a.results = make(chan error, 100)
+
+	for w := 1; w <= workerCount; w++ {
+		a.workersWg.Add(1)
+		go a.worker(ctx, w, a.jobs, a.results, &a.workersWg)
+	}
+
+	go func() {
+		for err := range a.results {
+			if err != nil && !errors.Is(err, context.Canceled) {
+				log.Printf("Error sending metric: %v\n", err)
+			}
+		}
+	}()
+
+	a.workersStarted = true
+}
+
+// stopWorkers stops the workers
+func (a *Agent) stopWorkers() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.workersStarted {
+		return
+	}
+
+	close(a.jobs)
+	a.workersWg.Wait()
+	close(a.results)
+	a.workersStarted = false
+}
+
+// sendAllMetrics 
 func (a *Agent) sendAllMetrics(ctx context.Context) {
 	a.mu.RLock()
 	ms := a.memStats
 	cs := a.customStats
+	gs := a.gopsutilStats
 	a.mu.RUnlock()
 
-	gaugeMetrics := getGaugeMetrics(&ms, &cs)
+	gaugeMetrics := getGaugeMetrics(&ms, &cs, &gs)
+	counterMetrics := getCounterMetrics(&ms, &cs)
+
+	workerCount := a.config.RateLimit
+
+	if workerCount <= 0 {
+		a.sendAllMetricsSequential(ctx, gaugeMetrics, counterMetrics)
+		return
+	}
+
+	a.startWorkers(ctx)
+
+	for name, value := range gaugeMetrics {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			select {
+			case a.jobs <- MetricTask{MType: model.Gauge, MName: name, MValue: value}:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	for name, value := range counterMetrics {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			select {
+			case a.jobs <- MetricTask{MType: model.Counter, MName: name, MValue: value}:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+}
+
+// sendAllMetricsSequential sends metrics sequentially
+func (a *Agent) sendAllMetricsSequential(ctx context.Context, gaugeMetrics map[string]float64, counterMetrics map[string]int64) {
 	for name, value := range gaugeMetrics {
 		select {
 		case <-ctx.Done():
@@ -120,7 +272,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 		default:
 		}
 
-		if err := a.sendMetric(ctx, model.Gauge, name, value); err != nil {
+		if err := a.sendMetricRequest(ctx, model.Gauge, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Printf("Sending metric %s canceled\n", name)
 				return
@@ -129,7 +281,6 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 		}
 	}
 
-	counterMetrics := getCounterMetrics(&ms, &cs)
 	for name, value := range counterMetrics {
 		select {
 		case <-ctx.Done():
@@ -138,7 +289,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 		default:
 		}
 
-		if err := a.sendMetric(ctx, model.Counter, name, value); err != nil {
+		if err := a.sendMetricRequest(ctx, model.Counter, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Printf("Sending metric %s canceled\n", name)
 				return
@@ -148,7 +299,23 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 	}
 }
 
-func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue interface{}) error {
+// worker processes tasks from the jobs channel and sends results to the results channel
+func (a *Agent) worker(ctx context.Context, id int, jobs <-chan MetricTask, results chan<- error, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for job := range jobs {
+		select {
+		case <-ctx.Done():
+			results <- ctx.Err()
+			return
+		default:
+			err := a.sendMetricRequest(ctx, job.MType, job.MName, job.MValue, id)
+			results <- err
+		}
+	}
+}
+
+// sendMetricRequest sends a metric to the endpoint /update
+func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mValue interface{}, workerID ...int) error {
 	url := fmt.Sprintf("%s/update", a.config.Address)
 	metricDTO := handler.MetricDTO{ID: mName, MType: mType}
 
@@ -205,7 +372,11 @@ func (a *Agent) sendMetric(ctx context.Context, mType, mName string, mValue inte
 		return fmt.Errorf("failed status code: %s, body: %s", response.Status, string(body))
 	}
 
-	log.Printf("Successfully sent: %s. Status: %s\n", mName, response.Status)
+	workerInfo := ""
+	if len(workerID) > 0 && workerID[0] > 0 {
+		workerInfo = fmt.Sprintf(" [worker: %d]", workerID[0])
+	}
+	log.Printf("Successfully sent: %s. Status: %s%s\n", mName, response.Status, workerInfo)
 	return nil
 }
 
@@ -221,9 +392,10 @@ func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 	a.mu.RLock()
 	ms := a.memStats
 	cs := a.customStats
+	gs := a.gopsutilStats
 	a.mu.RUnlock()
 
-	gaugeMetrics := getGaugeMetrics(&ms, &cs)
+	gaugeMetrics := getGaugeMetrics(&ms, &cs, &gs)
 	counterMetrics := getCounterMetrics(&ms, &cs)
 
 	total := len(gaugeMetrics) + len(counterMetrics)
@@ -312,8 +484,8 @@ func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.M
 	return nil
 }
 
-func getGaugeMetrics(ms *runtime.MemStats, cs *CustomStats) map[string]float64 {
-	return map[string]float64{
+func getGaugeMetrics(ms *runtime.MemStats, cs *CustomStats, gs *GopsutilStats) map[string]float64 {
+	metrics := map[string]float64{
 		"Alloc":         float64(ms.Alloc),
 		"BuckHashSys":   float64(ms.BuckHashSys),
 		"Frees":         float64(ms.Frees),
@@ -342,7 +514,15 @@ func getGaugeMetrics(ms *runtime.MemStats, cs *CustomStats) map[string]float64 {
 		"Sys":           float64(ms.Sys),
 		"TotalAlloc":    float64(ms.TotalAlloc),
 		"RandomValue":   cs.RandomValue,
+		"TotalMemory":   gs.TotalMemory,
+		"FreeMemory":    gs.FreeMemory,
 	}
+
+	for i, cpuUtil := range gs.CPUutilization {
+		metrics[fmt.Sprintf("CPUutilization%d", i+1)] = cpuUtil
+	}
+
+	return metrics
 }
 
 func getCounterMetrics(ms *runtime.MemStats, cs *CustomStats) map[string]int64 {
