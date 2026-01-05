@@ -106,6 +106,7 @@ type AgentConfig struct {
 	ReportInterval time.Duration
 	UseBatchMode   bool
 	Key            string // Key for hash calculation
+	RateLimit      int
 }
 
 type agentInternalConfig struct {
@@ -114,6 +115,7 @@ type agentInternalConfig struct {
 	ReportInterval Duration `env:"REPORT_INTERVAL"`
 	UseBatchMode   bool     `env:"USE_BATCH_MODE"`
 	Key            string   `env:"KEY"`
+	RateLimit 	   int 		`env:"RATE_LIMIT"`
 }
 
 // Environment variables take precedence over flags.
@@ -128,11 +130,13 @@ func LoadAgentConfig() (AgentConfig, error) {
 	cfg.ReportInterval = Duration{Duration: 10 * time.Second}
 	cfg.UseBatchMode = false
 	cfg.Key = ""
+	cfg.RateLimit = 0
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.Var(&cfg.ReportInterval, "r", "frequency of sending metrics (seconds or duration)")
 	fs.Var(&cfg.PollInterval, "p", "frequency of metrics polling (seconds or duration)")
 	fs.BoolVar(&cfg.UseBatchMode, "b", false, "use batch mode for sending metrics (send all metrics in one request)")
 	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
+	fs.IntVar(&cfg.RateLimit, "l", 0, "rate limit for sending metrics")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -150,6 +154,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 		ReportInterval: cfg.ReportInterval.Duration,
 		UseBatchMode:   cfg.UseBatchMode,
 		Key:            cfg.Key,
+		RateLimit:      cfg.RateLimit,
 	}
 
 	return finalCfg, nil
