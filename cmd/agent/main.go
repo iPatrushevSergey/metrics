@@ -29,10 +29,14 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		a.PollMetrics(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		a.PollGopsutilMetrics(ctx)
 	}()
 	go func() {
 		defer wg.Done()
@@ -47,5 +51,6 @@ func main() {
 	cancel()
 
 	wg.Wait()
+	a.Stop()
 	log.Println("The agent has been stopped")
 }
