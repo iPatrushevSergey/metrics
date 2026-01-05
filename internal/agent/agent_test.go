@@ -158,7 +158,7 @@ func TestSendMetric(t *testing.T) {
 			defer ts.Close()
 
 			agent := NewAgent(config.AgentConfig{Address: ts.URL})
-			err := agent.sendMetric(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
+			err := agent.sendMetricRequest(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
 
 			if tt.wantError {
 				if err == nil {
@@ -203,10 +203,13 @@ func TestGetGuaugeMetrics(t *testing.T) {
 		RandomValue: mockRandomValue,
 	}
 
-	metrics := getGaugeMetrics(&ms, &cs)
+	gs := GopsutilStats{}
 
-	if len(metrics) != 28 {
-		t.Errorf("getGaugeMetrics returned %d metrics, expected 28", len(metrics))
+	metrics := getGaugeMetrics(&ms, &cs, &gs)
+
+	// Minimum of 30 metrics: 28 from runtime + totalMemory + freeMemory
+	if len(metrics) < 30 {
+		t.Errorf("getGaugeMetrics returned %d metrics, expected at least 30", len(metrics))
 	}
 
 	tests := map[string]float64{
