@@ -33,7 +33,10 @@ func main() {
 	loggerAdapter.Info("Starting agent", zap.Object("config", &cfg))
 	loggerAdapter.Info("Sending metrics to the server", zap.String("address", cfg.Address))
 
-	a := agent.NewAgent(cfg, loggerAdapter)
+	a, err := agent.NewAgent(cfg, loggerAdapter)
+	if err != nil {
+		loggerAdapter.Fatal("Failed to create agent", zap.Error(err))
+	}
 
 	// The pattern "Graceful Shutdown"
 	ctx, cancel := context.WithCancel(context.Background())

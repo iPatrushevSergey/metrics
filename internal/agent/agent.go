@@ -54,13 +54,17 @@ type Agent struct {
 	workersWg      sync.WaitGroup
 }
 
-func NewAgent(config config.AgentConfig, logger logger.Logger) *Agent {
+func NewAgent(config config.AgentConfig, logger logger.Logger) (*Agent, error) {
+	if config.RateLimit < 0 {
+		return nil, fmt.Errorf("rate limit must be greater than or equal to 0, got: %d", config.RateLimit)
+	}
+
 	return &Agent{
 		config:      config,
 		client:      &http.Client{Timeout: 2 * time.Second},
 		logger:      logger,
 		retryConfig: DefaultRetryConfig(),
-	}
+	}, nil
 }
 
 // Stop stops the agent's workers
@@ -180,10 +184,6 @@ func (a *Agent) startWorkers(ctx context.Context) {
 	}
 
 	workerCount := a.config.RateLimit
-	if workerCount <= 0 {
-		return
-	}
-
 	a.jobs = make(chan MetricTask, 100)
 	a.results = make(chan error, 100)
 
@@ -231,7 +231,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context) {
 
 	workerCount := a.config.RateLimit
 
-	if workerCount <= 0 {
+	if workerCount == 0 {
 		a.sendAllMetricsSequential(ctx, gaugeMetrics, counterMetrics)
 		return
 	}

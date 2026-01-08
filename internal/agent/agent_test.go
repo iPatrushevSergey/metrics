@@ -24,10 +24,14 @@ func TestNewAgent(t *testing.T) {
 		PollInterval:   3,
 		ReportInterval: 6,
 		Address:        "http//:127.0.0.1:8080",
+		RateLimit:      5,
 	}
 
 	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-	agent := NewAgent(expectedConfig, testLogger)
+	agent, err := NewAgent(expectedConfig, testLogger)
+	if err != nil {
+		t.Fatalf("NewAgent returned error: %v", err)
+	}
 
 	if agent == nil {
 		t.Fatalf("NewAgent returned nil, expected *Agent")
@@ -59,9 +63,13 @@ func TestPollMetrics(t *testing.T) {
 	testPollInterval := 10 * time.Millisecond
 	testConfig := config.AgentConfig{
 		PollInterval: testPollInterval,
+		RateLimit:    5,
 	}
 	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-	agent := NewAgent(testConfig, testLogger)
+	agent, err := NewAgent(testConfig, testLogger)
+	if err != nil {
+		t.Fatalf("NewAgent returned error: %v", err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
@@ -163,8 +171,11 @@ func TestSendMetric(t *testing.T) {
 			defer ts.Close()
 
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			agent := NewAgent(config.AgentConfig{Address: ts.URL}, testLogger)
-			err := agent.sendMetricRequest(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
+			agent, err := NewAgent(config.AgentConfig{Address: ts.URL, RateLimit: 5}, testLogger)
+			if err != nil {
+				t.Fatalf("NewAgent returned error: %v", err)
+			}
+			err = agent.sendMetricRequest(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
 
 			if tt.wantError {
 				if err == nil {
