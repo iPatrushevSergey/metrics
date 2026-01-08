@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand/v2"
 	"net/http"
 	"runtime"
@@ -16,9 +15,11 @@ import (
 	"github.com/mailru/easyjson/jwriter"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
+	"go.uber.org/zap"
 
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
@@ -37,7 +38,8 @@ type GopsutilStats struct {
 type Agent struct {
 	config      config.AgentConfig
 	client      *http.Client
-	mu          sync.RWMutex      
+	logger      logger.Logger
+	mu          sync.RWMutex
 	retryConfig retry.RetryConfig // Retry configuration for HTTP requests
 
 	// Metrics
@@ -52,10 +54,11 @@ type Agent struct {
 	workersWg      sync.WaitGroup
 }
 
-func NewAgent(config config.AgentConfig) *Agent {
+func NewAgent(config config.AgentConfig, logger logger.Logger) *Agent {
 	return &Agent{
 		config:      config,
 		client:      &http.Client{Timeout: 2 * time.Second},
+		logger:      logger,
 		retryConfig: DefaultRetryConfig(),
 	}
 }
@@ -70,7 +73,7 @@ func (a *Agent) PollMetrics(ctx context.Context) {
 	ticker := time.NewTicker(a.config.PollInterval)
 	defer ticker.Stop()
 
-	log.Println("The metric collector is running")
+	a.logger.Info("The metric collector is running")
 	for {
 		select {
 		case <-ticker.C:
@@ -81,9 +84,9 @@ func (a *Agent) PollMetrics(ctx context.Context) {
 			a.customStats.RandomValue = rand.Float64()
 
 			a.mu.Unlock()
-			log.Println("The metrics have been updated")
+			a.logger.Info("The metrics have been updated")
 		case <-ctx.Done():
-			log.Println("The metric collector has been stopped")
+			a.logger.Info("The metric collector has been stopped")
 			return
 		}
 	}
@@ -94,7 +97,7 @@ func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
 	ticker := time.NewTicker(a.config.PollInterval)
 	defer ticker.Stop()
 
-	log.Println("The gopsutil metric collector is running")
+	a.logger.Info("The gopsutil metric collector is running")
 	for {
 		select {
 		case <-ticker.C:
@@ -102,7 +105,7 @@ func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
 
 			v, err := mem.VirtualMemory()
 			if err != nil {
-				log.Printf("Error getting memory stats: %v\n", err)
+				a.logger.Error("Error getting memory stats", zap.Error(err))
 			} else {
 				a.gopsutilStats.TotalMemory = float64(v.Total)
 				a.gopsutilStats.FreeMemory = float64(v.Free)
@@ -110,16 +113,16 @@ func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
 
 			percents, err := cpu.Percent(time.Second, true)
 			if err != nil {
-				log.Printf("Error getting CPU stats: %v\n", err)
+				a.logger.Error("Error getting CPU stats", zap.Error(err))
 				a.gopsutilStats.CPUutilization = []float64{}
 			} else {
 				a.gopsutilStats.CPUutilization = percents
 			}
 
 			a.mu.Unlock()
-			log.Println("The gopsutil metrics have been updated")
+			a.logger.Info("The gopsutil metrics have been updated")
 		case <-ctx.Done():
-			log.Println("The gopsutil metric collector has been stopped")
+			a.logger.Info("The gopsutil metric collector has been stopped")
 			return
 		}
 	}
@@ -130,14 +133,14 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 	ticker := time.NewTicker(a.config.ReportInterval)
 	defer ticker.Stop()
 
-	log.Println("The metrics sender is running")
+	a.logger.Info("The metrics sender is running")
 	for {
 		select {
 		case <-ticker.C:
-			log.Println("The beginning of sending metrics")
+			a.logger.Info("The beginning of sending metrics")
 			a.reportMetrics(ctx)
 		case <-ctx.Done():
-			log.Println("The metrics sender has been stopped")
+			a.logger.Info("The metrics sender has been stopped")
 			return
 		}
 	}
@@ -146,13 +149,13 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 // reportMetrics selects the mode of sending metrics: single or batch
 func (a *Agent) reportMetrics(ctx context.Context) {
 	if a.config.UseBatchMode {
-		log.Println("Sending metrics in batch mode")
+		a.logger.Info("Sending metrics in batch mode")
 		if err := a.sendAllMetricsBatch(ctx); err != nil {
 			if errors.Is(err, context.Canceled) {
-				log.Println("Sending metrics batch canceled")
+				a.logger.Info("Sending metrics batch canceled")
 				return
 			}
-			log.Printf("Error sending metrics batch: %v\n", err)
+			a.logger.Error("Error sending metrics batch", zap.Error(err))
 		}
 		return
 	}
@@ -192,7 +195,7 @@ func (a *Agent) startWorkers(ctx context.Context) {
 	go func() {
 		for err := range a.results {
 			if err != nil && !errors.Is(err, context.Canceled) {
-				log.Printf("Error sending metric: %v\n", err)
+				a.logger.Error("Error sending metric", zap.Error(err))
 			}
 		}
 	}()
@@ -215,7 +218,7 @@ func (a *Agent) stopWorkers() {
 	a.workersStarted = false
 }
 
-// sendAllMetrics 
+// sendAllMetrics
 func (a *Agent) sendAllMetrics(ctx context.Context) {
 	a.mu.RLock()
 	ms := a.memStats
@@ -267,34 +270,44 @@ func (a *Agent) sendAllMetricsSequential(ctx context.Context, gaugeMetrics map[s
 	for name, value := range gaugeMetrics {
 		select {
 		case <-ctx.Done():
-			log.Println("The metrics sender has been stopped")
+			a.logger.Info("The metrics sender has been stopped")
 			return
 		default:
 		}
 
 		if err := a.sendMetricRequest(ctx, model.Gauge, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
-				log.Printf("Sending metric %s canceled\n", name)
+				a.logger.Info("Sending metric canceled", zap.String("metric", name))
 				return
 			}
-			log.Printf("Error sending the metric gauge %s: %v\n", name, err)
+			a.logger.Error(
+				"Error sending the metric gauge",
+				zap.String("metric", name),
+				zap.String("type", "gauge"),
+				zap.Error(err),
+			)
 		}
 	}
 
 	for name, value := range counterMetrics {
 		select {
 		case <-ctx.Done():
-			log.Println("The metrics sender has been stopped")
+			a.logger.Info("The metrics sender has been stopped")
 			return
 		default:
 		}
 
 		if err := a.sendMetricRequest(ctx, model.Counter, name, value); err != nil {
 			if errors.Is(err, context.Canceled) {
-				log.Printf("Sending metric %s canceled\n", name)
+				a.logger.Info("Sending metric canceled", zap.String("metric", name))
 				return
 			}
-			log.Printf("Error sending the metric counter %s: %v\n", name, err)
+			a.logger.Error(
+				"Error sending the metric counter",
+				zap.String("metric", name),
+				zap.String("type", "counter"),
+				zap.Error(err),
+			)
 		}
 	}
 }
@@ -367,16 +380,19 @@ func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mVal
 	if response.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(reader)
 		if err != nil {
-			log.Printf("Error reading the response body: %v\n", err)
+			a.logger.Error("Error reading the response body", zap.Error(err))
 		}
 		return fmt.Errorf("failed status code: %s, body: %s", response.Status, string(body))
 	}
 
-	workerInfo := ""
-	if len(workerID) > 0 && workerID[0] > 0 {
-		workerInfo = fmt.Sprintf(" [worker: %d]", workerID[0])
+	fields := []zap.Field{
+		zap.String("metric", mName),
+		zap.String("status", response.Status),
 	}
-	log.Printf("Successfully sent: %s. Status: %s%s\n", mName, response.Status, workerInfo)
+	if len(workerID) > 0 && workerID[0] > 0 {
+		fields = append(fields, zap.Int("worker", workerID[0]))
+	}
+	a.logger.Info("Successfully sent metric", fields...)
 	return nil
 }
 
@@ -384,7 +400,7 @@ func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mVal
 func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		log.Println("The metrics sender has been stopped before batch sending")
+		a.logger.Info("The metrics sender has been stopped before batch sending")
 		return ctx.Err()
 	default:
 	}
@@ -400,7 +416,7 @@ func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 
 	total := len(gaugeMetrics) + len(counterMetrics)
 	if total == 0 {
-		log.Println("No metrics to send in batch")
+		a.logger.Info("No metrics to send in batch")
 		return nil
 	}
 
@@ -475,12 +491,16 @@ func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.M
 	if response.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(reader)
 		if err != nil {
-			log.Printf("Error reading the batch response body: %v\n", err)
+			a.logger.Error("Error reading the batch response body", zap.Error(err))
 		}
 		return fmt.Errorf("failed batch status code: %s, body: %s", response.Status, string(body))
 	}
 
-	log.Printf("Successfully sent batch of %d metrics. Status: %s\n", len(metrics), response.Status)
+	a.logger.Info(
+		"Successfully sent batch of metrics",
+		zap.Int("count", len(metrics)),
+		zap.String("status", response.Status),
+	)
 	return nil
 }
 
