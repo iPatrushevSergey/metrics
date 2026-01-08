@@ -84,7 +84,7 @@ func (a *Agent) PollMetrics(ctx context.Context) {
 			a.customStats.RandomValue = rand.Float64()
 
 			a.mu.Unlock()
-			a.logger.Info("The metrics have been updated")
+			a.logger.Debug("The metrics have been updated")
 		case <-ctx.Done():
 			a.logger.Info("The metric collector has been stopped")
 			return
@@ -120,7 +120,7 @@ func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
 			}
 
 			a.mu.Unlock()
-			a.logger.Info("The gopsutil metrics have been updated")
+			a.logger.Debug("The gopsutil metrics have been updated")
 		case <-ctx.Done():
 			a.logger.Info("The gopsutil metric collector has been stopped")
 			return
@@ -137,7 +137,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			a.logger.Info("The beginning of sending metrics")
+			a.logger.Debug("The beginning of sending metrics")
 			a.reportMetrics(ctx)
 		case <-ctx.Done():
 			a.logger.Info("The metrics sender has been stopped")
@@ -149,7 +149,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 // reportMetrics selects the mode of sending metrics: single or batch
 func (a *Agent) reportMetrics(ctx context.Context) {
 	if a.config.UseBatchMode {
-		a.logger.Info("Sending metrics in batch mode")
+		a.logger.Debug("Sending metrics in batch mode")
 		if err := a.sendAllMetricsBatch(ctx); err != nil {
 			if errors.Is(err, context.Canceled) {
 				a.logger.Info("Sending metrics batch canceled")
@@ -392,7 +392,7 @@ func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mVal
 	if len(workerID) > 0 && workerID[0] > 0 {
 		fields = append(fields, zap.Int("worker", workerID[0]))
 	}
-	a.logger.Info("Successfully sent metric", fields...)
+	a.logger.Debug("Successfully sent metric", fields...)
 	return nil
 }
 
@@ -416,7 +416,7 @@ func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 
 	total := len(gaugeMetrics) + len(counterMetrics)
 	if total == 0 {
-		a.logger.Info("No metrics to send in batch")
+		a.logger.Debug("No metrics to send in batch")
 		return nil
 	}
 
@@ -496,7 +496,7 @@ func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.M
 		return fmt.Errorf("failed batch status code: %s, body: %s", response.Status, string(body))
 	}
 
-	a.logger.Info(
+	a.logger.Debug(
 		"Successfully sent batch of metrics",
 		zap.Int("count", len(metrics)),
 		zap.String("status", response.Status),
