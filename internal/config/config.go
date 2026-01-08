@@ -107,6 +107,17 @@ type AgentConfig struct {
 	UseBatchMode   bool
 	Key            string // Key for hash calculation
 	RateLimit      int
+	LogLevel       string
+}
+
+func (c *AgentConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("address", c.Address)
+	enc.AddDuration("poll_interval", c.PollInterval)
+	enc.AddDuration("report_interval", c.ReportInterval)
+	enc.AddBool("use_batch_mode", c.UseBatchMode)
+	enc.AddInt("rate_limit", c.RateLimit)
+	enc.AddString("log_level", c.LogLevel)
+	return nil
 }
 
 type agentInternalConfig struct {
@@ -115,7 +126,8 @@ type agentInternalConfig struct {
 	ReportInterval Duration `env:"REPORT_INTERVAL"`
 	UseBatchMode   bool     `env:"USE_BATCH_MODE"`
 	Key            string   `env:"KEY"`
-	RateLimit 	   int 		`env:"RATE_LIMIT"`
+	RateLimit      int      `env:"RATE_LIMIT"`
+	LogLevel       string   `env:"LOG_LEVEL"`
 }
 
 // Environment variables take precedence over flags.
@@ -131,12 +143,14 @@ func LoadAgentConfig() (AgentConfig, error) {
 	cfg.UseBatchMode = false
 	cfg.Key = ""
 	cfg.RateLimit = 0
+	cfg.LogLevel = "info"
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.Var(&cfg.ReportInterval, "r", "frequency of sending metrics (seconds or duration)")
 	fs.Var(&cfg.PollInterval, "p", "frequency of metrics polling (seconds or duration)")
 	fs.BoolVar(&cfg.UseBatchMode, "b", false, "use batch mode for sending metrics (send all metrics in one request)")
 	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
 	fs.IntVar(&cfg.RateLimit, "l", 0, "rate limit for sending metrics")
+	fs.StringVar(&cfg.LogLevel, "log", "info", "logging level")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -155,6 +169,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 		UseBatchMode:   cfg.UseBatchMode,
 		Key:            cfg.Key,
 		RateLimit:      cfg.RateLimit,
+		LogLevel:       cfg.LogLevel,
 	}
 
 	return finalCfg, nil
