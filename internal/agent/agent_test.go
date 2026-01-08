@@ -12,7 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
 
@@ -23,7 +26,8 @@ func TestNewAgent(t *testing.T) {
 		Address:        "http//:127.0.0.1:8080",
 	}
 
-	agent := NewAgent(expectedConfig)
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	agent := NewAgent(expectedConfig, testLogger)
 
 	if agent == nil {
 		t.Fatalf("NewAgent returned nil, expected *Agent")
@@ -56,7 +60,8 @@ func TestPollMetrics(t *testing.T) {
 	testConfig := config.AgentConfig{
 		PollInterval: testPollInterval,
 	}
-	agent := NewAgent(testConfig)
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	agent := NewAgent(testConfig, testLogger)
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
@@ -157,7 +162,8 @@ func TestSendMetric(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			agent := NewAgent(config.AgentConfig{Address: ts.URL})
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			agent := NewAgent(config.AgentConfig{Address: ts.URL}, testLogger)
 			err := agent.sendMetricRequest(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
 
 			if tt.wantError {
