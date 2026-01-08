@@ -133,6 +133,9 @@ func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
 }
 
 // ReportMetrics report metrics
+// Note: Ticker fires at scheduled times (every ReportInterval) regardless of whether ticks are read.
+// If a tick is not read, it's buffered (buffer size = 1) and read immediately when select returns.
+// If more than one tick is missed, extra ticks are lost.
 func (a *Agent) ReportMetrics(ctx context.Context) {
 	ticker := time.NewTicker(a.config.ReportInterval)
 	defer ticker.Stop()
@@ -152,6 +155,19 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 
 // reportMetrics selects the mode of sending metrics: single or batch
 func (a *Agent) reportMetrics(ctx context.Context) {
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		if duration > a.config.ReportInterval {
+			a.logger.Warn(
+				"Metrics sending took longer than report interval, possible channel blocking",
+				zap.Duration("duration", duration),
+				zap.Duration("report_interval", a.config.ReportInterval),
+				zap.Duration("exceeded_by", duration-a.config.ReportInterval),
+			)
+		}
+	}()
+
 	if a.config.UseBatchMode {
 		a.logger.Debug("Sending metrics in batch mode")
 		if err := a.sendAllMetricsBatch(ctx); err != nil {
@@ -184,8 +200,10 @@ func (a *Agent) startWorkers(ctx context.Context) {
 	}
 
 	workerCount := a.config.RateLimit
-	a.jobs = make(chan MetricTask, 100)
-	a.results = make(chan error, 100)
+	// Channel buffer size equals number of readers (workers) to prevent blocking
+	a.jobs = make(chan MetricTask, workerCount)
+	// Channel buffer size equals number of writers (workers) to prevent blocking
+	a.results = make(chan error, workerCount)
 
 	for w := 1; w <= workerCount; w++ {
 		a.workersWg.Add(1)
