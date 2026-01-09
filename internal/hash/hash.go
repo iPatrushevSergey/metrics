@@ -22,12 +22,14 @@ func CalculateHash(body []byte, key string) string {
 
 // VerifyHash verifies that the calculated hash matches the provided hash
 func VerifyHash(body []byte, key string, providedHash string) error {
+	// If no key is configured, hash verification is not required
 	if key == "" {
 		return nil
 	}
 
+	// If key is set, hash must be provided
 	if providedHash == "" {
-		return nil
+		return fmt.Errorf("hash is required when key is configured")
 	}
 
 	calculatedHash := CalculateHash(body, key)
