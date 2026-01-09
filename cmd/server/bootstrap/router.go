@@ -6,6 +6,7 @@ import (
 	gojson "github.com/goccy/go-json"
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/middleware"
 )
 
@@ -20,10 +21,10 @@ func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface
 }
 
 // SetupRouter configures and returns the HTTP router with all routes and middleware
-func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig) *gin.Engine {
+func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig, log logger.Logger) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
-	router.Use(middleware.GzipGinMiddleware())
+	router.Use(middleware.GzipGinMiddleware(log))
 	router.Use(middleware.HashMiddleware(cfg.Key))
 	router.Use(middleware.LoggerMiddleware())
 	router.Use(func(c *gin.Context) {

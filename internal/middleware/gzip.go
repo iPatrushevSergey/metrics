@@ -6,10 +6,13 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 )
 
-// GzipMiddleware middleware for gzip compression
-func GzipGinMiddleware() gin.HandlerFunc {
+// GzipGinMiddleware middleware for gzip compression
+func GzipGinMiddleware(log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Incoming Request Processing (Decompress)
 		contentEncoding := c.Request.Header.Get("Content-Encoding")
@@ -17,6 +20,12 @@ func GzipGinMiddleware() gin.HandlerFunc {
 		if sendsGzip {
 			cr, err := gzip.NewReader(c.Request.Body)
 			if err != nil {
+				log.Error(
+					"Failed to create gzip reader",
+					zap.Error(err),
+					zap.String("method", c.Request.Method),
+					zap.String("path", c.Request.URL.Path),
+				)
 				c.AbortWithStatus(http.StatusInternalServerError)
 				return
 			}

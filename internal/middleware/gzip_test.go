@@ -9,14 +9,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/gin-gonic/gin"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/stretchr/testify/require"
 )
 
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.Use(GzipGinMiddleware())
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	router.Use(GzipGinMiddleware(testLogger))
 
 	router.POST("/test-json", func(c *gin.Context) {
 		body, err := io.ReadAll(c.Request.Body)
