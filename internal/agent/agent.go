@@ -340,7 +340,9 @@ func (a *Agent) worker(ctx context.Context, id int, jobs <-chan MetricTask, resu
 			return
 		default:
 			err := a.sendMetricRequest(ctx, job.MType, job.MName, job.MValue, id)
-			results <- err
+			if err != nil && !errors.Is(err, context.Canceled) {
+				results <- err
+			}
 		}
 	}
 }
