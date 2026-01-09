@@ -47,8 +47,8 @@ type Agent struct {
 	customStats   CustomStats
 	gopsutilStats GopsutilStats
 
-	// Worker pool
-	jobs           chan MetricTask
+	// Worker pool for batch requests
+	batchJobs      chan []handler.MetricDTO
 	results        chan error
 	workersStarted bool
 	workersWg      sync.WaitGroup
@@ -145,7 +145,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			a.logger.Debug("The beginning of sending metrics")
-			a.reportMetrics(ctx)
+			go a.reportMetrics(ctx)
 		case <-ctx.Done():
 			a.logger.Info("The metrics sender has been stopped")
 			return
@@ -153,7 +153,7 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 	}
 }
 
-// reportMetrics selects the mode of sending metrics: single or batch
+// reportMetrics sends all metrics in batch mode
 func (a *Agent) reportMetrics(ctx context.Context) {
 	start := time.Now()
 	defer func() {
@@ -168,29 +168,16 @@ func (a *Agent) reportMetrics(ctx context.Context) {
 		}
 	}()
 
-	if a.config.UseBatchMode {
-		a.logger.Debug("Sending metrics in batch mode")
-		if err := a.sendAllMetricsBatch(ctx); err != nil {
-			if errors.Is(err, context.Canceled) {
-				a.logger.Info("Sending metrics batch canceled")
-				return
-			}
-			a.logger.Error("Error sending metrics batch", zap.Error(err))
+	if err := a.sendAllMetricsBatch(ctx); err != nil {
+		if errors.Is(err, context.Canceled) {
+			a.logger.Info("Sending metrics batch canceled")
+			return
 		}
-		return
+		a.logger.Error("Error sending metrics batch", zap.Error(err))
 	}
-
-	a.sendAllMetrics(ctx)
 }
 
-// MetricTask represents a task for sending a single metric
-type MetricTask struct {
-	MType  string
-	MName  string
-	MValue interface{}
-}
-
-// startWorkers starting workers
+// startWorkers starts workers for processing batch requests
 func (a *Agent) startWorkers(ctx context.Context) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -201,19 +188,19 @@ func (a *Agent) startWorkers(ctx context.Context) {
 
 	workerCount := a.config.RateLimit
 	// Channel buffer size equals number of readers (workers) to prevent blocking
-	a.jobs = make(chan MetricTask, workerCount)
+	a.batchJobs = make(chan []handler.MetricDTO, workerCount)
 	// Channel buffer size equals number of writers (workers) to prevent blocking
 	a.results = make(chan error, workerCount)
 
 	for w := 1; w <= workerCount; w++ {
 		a.workersWg.Add(1)
-		go a.worker(ctx, w, a.jobs, a.results, &a.workersWg)
+		go a.batchWorker(ctx, w, a.batchJobs, a.results, &a.workersWg)
 	}
 
 	go func() {
 		for err := range a.results {
 			if err != nil && !errors.Is(err, context.Canceled) {
-				a.logger.Error("Error sending metric", zap.Error(err))
+				a.logger.Error("Error sending metrics batch", zap.Error(err))
 			}
 		}
 	}()
@@ -230,117 +217,24 @@ func (a *Agent) stopWorkers() {
 		return
 	}
 
-	close(a.jobs)
+	close(a.batchJobs)
 	a.workersWg.Wait()
 	close(a.results)
 	a.workersStarted = false
 }
 
-// sendAllMetrics
-func (a *Agent) sendAllMetrics(ctx context.Context) {
-	a.mu.RLock()
-	ms := a.memStats
-	cs := a.customStats
-	gs := a.gopsutilStats
-	a.mu.RUnlock()
-
-	gaugeMetrics := getGaugeMetrics(&ms, &cs, &gs)
-	counterMetrics := getCounterMetrics(&ms, &cs)
-
-	workerCount := a.config.RateLimit
-
-	if workerCount == 0 {
-		a.sendAllMetricsSequential(ctx, gaugeMetrics, counterMetrics)
-		return
-	}
-
-	a.startWorkers(ctx)
-
-	for name, value := range gaugeMetrics {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			select {
-			case a.jobs <- MetricTask{MType: model.Gauge, MName: name, MValue: value}:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
-
-	for name, value := range counterMetrics {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			select {
-			case a.jobs <- MetricTask{MType: model.Counter, MName: name, MValue: value}:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
-}
-
-// sendAllMetricsSequential sends metrics sequentially
-func (a *Agent) sendAllMetricsSequential(ctx context.Context, gaugeMetrics map[string]float64, counterMetrics map[string]int64) {
-	for name, value := range gaugeMetrics {
-		select {
-		case <-ctx.Done():
-			a.logger.Info("The metrics sender has been stopped")
-			return
-		default:
-		}
-
-		if err := a.sendMetricRequest(ctx, model.Gauge, name, value); err != nil {
-			if errors.Is(err, context.Canceled) {
-				a.logger.Info("Sending metric canceled", zap.String("metric", name))
-				return
-			}
-			a.logger.Error(
-				"Error sending the metric gauge",
-				zap.String("metric", name),
-				zap.String("type", "gauge"),
-				zap.Error(err),
-			)
-		}
-	}
-
-	for name, value := range counterMetrics {
-		select {
-		case <-ctx.Done():
-			a.logger.Info("The metrics sender has been stopped")
-			return
-		default:
-		}
-
-		if err := a.sendMetricRequest(ctx, model.Counter, name, value); err != nil {
-			if errors.Is(err, context.Canceled) {
-				a.logger.Info("Sending metric canceled", zap.String("metric", name))
-				return
-			}
-			a.logger.Error(
-				"Error sending the metric counter",
-				zap.String("metric", name),
-				zap.String("type", "counter"),
-				zap.Error(err),
-			)
-		}
-	}
-}
-
-// worker processes tasks from the jobs channel and sends results to the results channel
-func (a *Agent) worker(ctx context.Context, id int, jobs <-chan MetricTask, results chan<- error, wg *sync.WaitGroup) {
+// batchWorker processes batch requests from the jobs channel and sends results to the results channel
+func (a *Agent) batchWorker(ctx context.Context, id int, batchJobs <-chan []handler.MetricDTO, results chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
-	for job := range jobs {
+	for metrics := range batchJobs {
 		select {
 		case <-ctx.Done():
 			results <- ctx.Err()
 			return
 		default:
-			err := a.sendMetricRequest(ctx, job.MType, job.MName, job.MValue, id)
+			err := a.sendMetricsBatchRequest(ctx, metrics)
 			if err != nil && !errors.Is(err, context.Canceled) {
+				a.logger.Error("Batch worker error", zap.Int("worker_id", id), zap.Error(err))
 				results <- err
 			}
 		}
@@ -416,7 +310,7 @@ func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mVal
 	return nil
 }
 
-// sendAllMetricsBatch collects all metrics and sends them in one batch request
+// sendAllMetricsBatch collects all metrics and sends them via worker pool or directly
 func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
@@ -460,7 +354,31 @@ func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 		})
 	}
 
-	return a.sendMetricsBatchRequest(ctx, metrics)
+	// If rate limit is 0, send directly without worker pool
+	if a.config.RateLimit == 0 {
+		return a.sendMetricsBatchRequest(ctx, metrics)
+	}
+
+	// Use worker pool to limit concurrent batch requests
+	a.startWorkers(ctx)
+
+	// Try to send batch to worker pool with timeout to prevent goroutine accumulation
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case a.batchJobs <- metrics:
+		// Batch request queued, worker will process it
+		return nil
+	case <-time.After(1 * time.Second):
+		// Channel is full, log warning but don't block indefinitely
+		// This prevents goroutine accumulation when server is very slow
+		a.logger.Warn(
+			"Batch jobs channel is full, dropping batch to prevent goroutine accumulation",
+			zap.Int("rate_limit", a.config.RateLimit),
+			zap.Int("batch_size", len(metrics)),
+		)
+		return fmt.Errorf("batch jobs channel is full, rate limit exceeded")
+	}
 }
 
 // sendMetricsBatchRequest sends a batch of metrics to the endpoint /updates with gzip compression
