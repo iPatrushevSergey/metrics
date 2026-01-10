@@ -8,8 +8,11 @@ import (
 	"sync"
 	"syscall"
 
+	"go.uber.org/zap"
+
 	"github.com/iPatrushevSergey/metrics/internal/agent"
 	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 )
 
 func main() {
@@ -18,10 +21,22 @@ func main() {
 		log.Fatalf("error load config: %v", err)
 	}
 
-	log.Printf("Starting agent with config: %+v\n", cfg)
-	log.Println("Sending metrics to the server", cfg.Address)
+	// Initialize zap logger
+	initializedLogger, err := logger.Initialize(cfg.LogLevel)
+	if err != nil {
+		log.Fatalf("error initializing logger: %v", err)
+	}
+	defer initializedLogger.Sync()
 
-	a := agent.NewAgent(cfg)
+	loggerAdapter := logger.NewZapLoggerAdapter(initializedLogger)
+
+	loggerAdapter.Info("Starting agent", zap.Object("config", &cfg))
+	loggerAdapter.Info("Sending metrics to the server", zap.String("address", cfg.Address))
+
+	a, err := agent.NewAgent(cfg, loggerAdapter)
+	if err != nil {
+		loggerAdapter.Fatal("Failed to create agent", zap.Error(err))
+	}
 
 	// The pattern "Graceful Shutdown"
 	ctx, cancel := context.WithCancel(context.Background())
@@ -29,11 +44,17 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		a.PollMetrics(ctx)
 	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.PollGopsutilMetrics(ctx)
+	}()
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		a.ReportMetrics(ctx)
@@ -43,9 +64,10 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	<-quit
-	log.Println("The completion signal has been received, starting the stop...")
+	loggerAdapter.Info("The completion signal has been received, starting the stop...")
 	cancel()
 
 	wg.Wait()
-	log.Println("The agent has been stopped")
+	a.Stop()
+	loggerAdapter.Info("The agent has been stopped")
 }

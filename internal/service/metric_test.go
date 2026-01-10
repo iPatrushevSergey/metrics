@@ -1,9 +1,9 @@
 package service
 
 import (
+	"context"
 	"testing"
 
-	"github.com/iPatrushevSergey/metrics/internal/filestorage"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 
@@ -15,6 +15,8 @@ func floatp(f float64) *float64 { return &f }
 func intp(i int64) *int64       { return &i }
 
 func TestMetricServiceGet(t *testing.T) {
+	ctx := context.Background()
+
 	initialState := map[string]model.Metric{
 		"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(10.5)},
 		"counter": {ID: "c1", MType: model.Counter, Delta: intp(50)},
@@ -24,23 +26,24 @@ func TestMetricServiceGet(t *testing.T) {
 	typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 	typedRepo.DB = initialState
 
-	fs := filestorage.NewFileStorage("metrics_test.json")
-	metricService := NewMetricService(typedRepo, fs, 50)
+	metricService := NewMetricService(typedRepo)
 
 	t.Run("success get metric", func(t *testing.T) {
-		metric, err := metricService.GetValue("gauge", "gauge")
+		metric, err := metricService.GetValue(ctx, "gauge", "gauge")
 		require.NoError(t, err)
 		assert.Equal(t, "10.5", metric)
 	})
 
 	t.Run("error metric not found", func(t *testing.T) {
-		_, err := metricService.GetValue("counter", "nonexistent")
+		_, err := metricService.GetValue(ctx, "counter", "nonexistent")
 		require.Error(t, err)
 		assert.EqualError(t, err, "metric not found")
 	})
 }
 
 func TestMetricServiceGetAll(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("get all existing metrics", func(t *testing.T) {
 		initialState := map[string]model.Metric{
 			"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(10.5)},
@@ -51,27 +54,16 @@ func TestMetricServiceGetAll(t *testing.T) {
 		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 		typedRepo.DB = initialState
 
-		fs := filestorage.NewFileStorage("metrics_test.json")
-		metricService := NewMetricService(typedRepo, fs, 50)
+		metricService := NewMetricService(typedRepo)
 
-		allMetrics, err := metricService.GetAll()
+		allMetrics, err := metricService.GetAll(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 2, len(allMetrics.Metrics))
+		assert.Equal(t, 2, len(allMetrics))
 
-		foundNames := make(map[string]struct{})
-		for _, m := range allMetrics.Metrics {
-			foundNames[m.Name] = struct{}{}
-
-			switch m.Name {
-			case "gauge":
-				assert.Equal(t, "10.5", m.Value)
-			case "counter":
-				assert.Equal(t, "50", m.Value)
-			}
-		}
-
-		assert.Contains(t, foundNames, "gauge")
-		assert.Contains(t, foundNames, "counter")
+		assert.Contains(t, allMetrics, "gauge")
+		assert.Contains(t, allMetrics, "counter")
+		assert.Equal(t, floatp(10.5), allMetrics["gauge"].Value)
+		assert.Equal(t, intp(50), allMetrics["counter"].Delta)
 	})
 
 	t.Run("get empty metrics map", func(t *testing.T) {
@@ -81,16 +73,17 @@ func TestMetricServiceGetAll(t *testing.T) {
 		typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 		typedRepo.DB = initialState
 
-		fs := filestorage.NewFileStorage("metrics_test.json")
-		metricService := NewMetricService(typedRepo, fs, 50)
+		metricService := NewMetricService(typedRepo)
 
-		allMetrics, err := metricService.GetAll()
+		allMetrics, err := metricService.GetAll(ctx)
 		require.NoError(t, err)
 		assert.Empty(t, allMetrics)
 	})
 }
 
 func TestMetricServiceUpdate(t *testing.T) {
+	ctx := context.Background()
+
 	type want struct {
 		metric model.Metric
 		exists bool
@@ -111,20 +104,20 @@ func TestMetricServiceUpdate(t *testing.T) {
 			metricName:   "gauge",
 			metricValue:  "10.3",
 			want: want{
-				metric: model.Metric{MType: model.Gauge, Value: floatp(10.3)},
+				metric: model.Metric{ID: "gauge", MType: model.Gauge, Value: floatp(10.3)},
 				exists: true,
 			},
 		},
 		{
 			name: "update Gauge",
 			initialState: map[string]model.Metric{
-				"existing_gauge": {ID: "uuid1", MType: model.Gauge, Value: floatp(9.1)},
+				"existing_gauge": {ID: "existing_gauge", MType: model.Gauge, Value: floatp(9.1)},
 			},
 			metricType:  model.Gauge,
 			metricName:  "existing_gauge",
 			metricValue: "2.1",
 			want: want{
-				metric: model.Metric{ID: "uuid1", MType: model.Gauge, Value: floatp(2.1)},
+				metric: model.Metric{ID: "existing_gauge", MType: model.Gauge, Value: floatp(2.1)},
 				exists: true,
 			},
 		},
@@ -135,20 +128,20 @@ func TestMetricServiceUpdate(t *testing.T) {
 			metricName:   "new_counter",
 			metricValue:  "10",
 			want: want{
-				metric: model.Metric{MType: model.Counter, Delta: intp(10)},
+				metric: model.Metric{ID: "new_counter", MType: model.Counter, Delta: intp(10)},
 				exists: true,
 			},
 		},
 		{
 			name: "update Counter",
 			initialState: map[string]model.Metric{
-				"existing_counter": {ID: "uuid1", MType: model.Counter, Delta: intp(10)},
+				"existing_counter": {ID: "existing_counter", MType: model.Counter, Delta: intp(10)},
 			},
 			metricType:  model.Counter,
 			metricName:  "existing_counter",
 			metricValue: "10",
 			want: want{
-				metric: model.Metric{ID: "uuid1", MType: model.Counter, Delta: intp(20)},
+				metric: model.Metric{ID: "existing_counter", MType: model.Counter, Delta: intp(20)},
 				exists: true,
 			},
 		},
@@ -161,14 +154,12 @@ func TestMetricServiceUpdate(t *testing.T) {
 
 			typedMockRepo.DB = tt.initialState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			service := NewMetricService(mockRepo, fs, 50)
-			err := service.Update(tt.metricType, tt.metricName, tt.metricValue)
+			service := NewMetricService(mockRepo)
+			err := service.Update(ctx, tt.metricType, tt.metricName, tt.metricValue)
 			require.NoError(t, err)
 
-			resultMetric, exists := mockRepo.GetByID(tt.metricName)
-
-			require.Equal(t, tt.want.exists, exists)
+			resultMetric, err := mockRepo.GetByID(ctx, tt.metricName)
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.metric.MType, resultMetric.MType)
 			assert.Equal(t, tt.want.metric.Value, resultMetric.Value)

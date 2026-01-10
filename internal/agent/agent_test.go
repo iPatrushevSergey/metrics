@@ -12,7 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/iPatrushevSergey/metrics/internal/config"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
 
@@ -21,9 +24,14 @@ func TestNewAgent(t *testing.T) {
 		PollInterval:   3,
 		ReportInterval: 6,
 		Address:        "http//:127.0.0.1:8080",
+		RateLimit:      5,
 	}
 
-	agent := NewAgent(expectedConfig)
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	agent, err := NewAgent(expectedConfig, testLogger)
+	if err != nil {
+		t.Fatalf("NewAgent returned error: %v", err)
+	}
 
 	if agent == nil {
 		t.Fatalf("NewAgent returned nil, expected *Agent")
@@ -55,8 +63,13 @@ func TestPollMetrics(t *testing.T) {
 	testPollInterval := 10 * time.Millisecond
 	testConfig := config.AgentConfig{
 		PollInterval: testPollInterval,
+		RateLimit:    5,
 	}
-	agent := NewAgent(testConfig)
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	agent, err := NewAgent(testConfig, testLogger)
+	if err != nil {
+		t.Fatalf("NewAgent returned error: %v", err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
@@ -157,8 +170,12 @@ func TestSendMetric(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			agent := NewAgent(config.AgentConfig{Address: ts.URL})
-			err := agent.sendMetric(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			agent, err := NewAgent(config.AgentConfig{Address: ts.URL, RateLimit: 5}, testLogger)
+			if err != nil {
+				t.Fatalf("NewAgent returned error: %v", err)
+			}
+			err = agent.sendMetricRequest(context.Background(), tt.metricType, tt.metricName, tt.metricValue)
 
 			if tt.wantError {
 				if err == nil {
@@ -203,10 +220,13 @@ func TestGetGuaugeMetrics(t *testing.T) {
 		RandomValue: mockRandomValue,
 	}
 
-	metrics := getGaugeMetrics(&ms, &cs)
+	gs := GopsutilStats{}
 
-	if len(metrics) != 28 {
-		t.Errorf("getGaugeMetrics returned %d metrics, expected 28", len(metrics))
+	metrics := getGaugeMetrics(&ms, &cs, &gs)
+
+	// Minimum of 30 metrics: 28 from runtime + totalMemory + freeMemory
+	if len(metrics) < 30 {
+		t.Errorf("getGaugeMetrics returned %d metrics, expected at least 30", len(metrics))
 	}
 
 	tests := map[string]float64{

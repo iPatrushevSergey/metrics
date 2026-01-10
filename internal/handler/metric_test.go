@@ -8,12 +8,13 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iPatrushevSergey/metrics/internal/filestorage"
+	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func floatp(f float64) *float64 { return &f }
@@ -76,9 +77,9 @@ func TestMetricHandlerUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := inmemory.NewMemStorageMetricRepository()
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(repo, fs, 50)
-			metricHandler := NewMetricHandler(metricService)
+			metricService := service.NewMetricService(repo)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.POST("/update/:type/:name/:value", metricHandler.Update)
@@ -107,8 +108,8 @@ func TestMetricHandlerGetValue(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	initialState := map[string]model.Metric{
-		"gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(101.1)},
-		"counter": {ID: "c1", MType: model.Counter, Delta: intp(11)},
+		"Gauge":   {ID: "g1", MType: model.Gauge, Value: floatp(101.1)},
+		"Counter": {ID: "c1", MType: model.Counter, Delta: intp(11)},
 		"nil":     {ID: "g2", MType: model.Gauge, Value: nil},
 	}
 
@@ -155,9 +156,9 @@ func TestMetricHandlerGetValue(t *testing.T) {
 			typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 			typedRepo.DB = initialState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(typedRepo, fs, 50)
-			metricHandler := NewMetricHandler(metricService)
+			metricService := service.NewMetricService(typedRepo)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.GET("/value/:type/:name", metricHandler.GetValue)
@@ -231,9 +232,9 @@ func TestMetricHandlerGetJSON(t *testing.T) {
 			typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 			typedRepo.DB = initialState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(typedRepo, fs, 50)
-			metricHandler := NewMetricHandler(metricService)
+			metricService := service.NewMetricService(typedRepo)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.POST("/value", metricHandler.GetJSON)
@@ -322,9 +323,9 @@ func TestMetricHandlerGetAll(t *testing.T) {
 			typedRepo := repo.(*inmemory.MemStorageMetricRepository)
 			typedRepo.DB = tt.repoState
 
-			fs := filestorage.NewFileStorage("metrics_test.json")
-			metricService := service.NewMetricService(typedRepo, fs, 50)
-			metricHandler := NewMetricHandler(metricService)
+			metricService := service.NewMetricService(typedRepo)
+			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+			metricHandler := NewMetricHandler(metricService, testLogger)
 
 			router := gin.New()
 			router.GET("/", metricHandler.GetAll)

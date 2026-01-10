@@ -1,11 +1,13 @@
 package inmemory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/iPatrushevSergey/metrics/internal/model"
+	"github.com/iPatrushevSergey/metrics/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,6 +16,7 @@ func floatp(f float64) *float64 { return &f }
 func intp(i int64) *int64       { return &i }
 
 func TestMemStorageMetricRepository(t *testing.T) {
+	ctx := context.Background()
 	t.Run("create", func(t *testing.T) {
 		repo := NewMemStorageMetricRepository()
 
@@ -25,44 +28,80 @@ func TestMemStorageMetricRepository(t *testing.T) {
 			MType: model.Gauge,
 			Value: &mValue,
 		}
-		repo.Create(createMetric)
+		err := repo.Create(ctx, createMetric)
+		require.NoError(t, err)
 
-		repoMetric, exists := repo.GetByID(mName)
-		require.True(t, exists)
+		repoMetric, err := repo.GetByID(ctx, mName)
+		require.NoError(t, err)
 		assert.Equal(t, createMetric, repoMetric)
 	})
 
-	t.Run("update", func(t *testing.T) {
+	t.Run("create duplicate returns error", func(t *testing.T) {
 		repo := NewMemStorageMetricRepository()
+		mName := "testDuplicate"
 
-		mName := "testUpdateCounter"
-		mDelta1 := int64(10)
-		mDelta2 := int64(100)
+		val1 := 10.0
+		err := repo.Create(ctx, model.Metric{ID: mName, MType: model.Gauge, Value: &val1})
+		require.NoError(t, err)
 
-		createMetric := model.Metric{
-			ID:    mName,
-			MType: model.Counter,
-			Delta: &mDelta1,
-		}
-		repo.Create(createMetric)
+		val2 := 20.0
+		err = repo.Create(ctx, model.Metric{ID: mName, MType: model.Gauge, Value: &val2})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, repository.ErrAlreadyExists)
+	})
 
-		updateMetric := model.Metric{
-			ID:    mName,
-			MType: model.Counter,
-			Delta: &mDelta2,
-		}
-		repo.Update(mName, updateMetric)
+	t.Run("update existing metric (gauge)", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		mName := "testGauge"
 
-		repoMetric, exists := repo.GetByID(mName)
-		require.True(t, exists)
-		assert.Equal(t, updateMetric, repoMetric)
+		val1 := 10.0
+		err := repo.Create(ctx, model.Metric{ID: mName, MType: model.Gauge, Value: &val1})
+		require.NoError(t, err)
+
+		val2 := 20.0
+		updatedMetric := model.Metric{ID: mName, MType: model.Gauge, Value: &val2}
+		err = repo.Update(ctx, mName, updatedMetric)
+		require.NoError(t, err)
+
+		repoMetric, err := repo.GetByID(ctx, mName)
+		require.NoError(t, err)
+		assert.Equal(t, val2, *repoMetric.Value)
+	})
+
+	t.Run("update existing metric (counter)", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		mName := "testCounter"
+
+		delta1 := int64(10)
+		err := repo.Create(ctx, model.Metric{ID: mName, MType: model.Counter, Delta: &delta1})
+		require.NoError(t, err)
+
+		delta2 := int64(100)
+		updatedMetric := model.Metric{ID: mName, MType: model.Counter, Delta: &delta2}
+		err = repo.Update(ctx, mName, updatedMetric)
+		require.NoError(t, err)
+
+		repoMetric, err := repo.GetByID(ctx, mName)
+		require.NoError(t, err)
+		assert.Equal(t, delta2, *repoMetric.Delta)
+	})
+
+	t.Run("update non-existent metric returns error", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		mName := "nonexistent"
+
+		val := 10.0
+		err := repo.Update(ctx, mName, model.Metric{ID: mName, MType: model.Gauge, Value: &val})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
 	t.Run("get non-existent metric", func(t *testing.T) {
 		repo := NewMemStorageMetricRepository()
 
-		_, exists := repo.GetByID("nonexistent")
-		assert.False(t, exists)
+		_, err := repo.GetByID(ctx, "nonexistent")
+		require.Error(t, err)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
 	t.Run("get all", func(t *testing.T) {
@@ -76,8 +115,10 @@ func TestMemStorageMetricRepository(t *testing.T) {
 
 		typedRepo.DB = initialState
 
-		allMetrics := typedRepo.GetAll()
-		assert.Equal(t, 2, len(initialState))
+		allMetrics, err := typedRepo.GetAll(ctx)
+		require.NoError(t, err)
+
+		assert.Equal(t, 2, len(allMetrics))
 		assert.Equal(t, initialState["gauge"], allMetrics["gauge"])
 		assert.Equal(t, initialState["counter"], allMetrics["counter"])
 
@@ -93,21 +134,21 @@ func TestMemStorageMetricRepository(t *testing.T) {
 
 		wg.Add(numGoroutines)
 		for i := 0; i < numGoroutines; i++ {
-			go func() {
+			go func(id int) {
 				defer wg.Done()
 
-				gaugeName := fmt.Sprintf("gauge_%d", i)
-				counterName := fmt.Sprintf("counter_%d", i)
+				gaugeName := fmt.Sprintf("gauge_%d", id)
+				counterName := fmt.Sprintf("counter_%d", id)
 
 				gaugeValue := 12.5
 				counterValue := int64(15)
 
-				repo.Create(model.Metric{ID: gaugeName, Value: &gaugeValue})
-				repo.Create(model.Metric{ID: counterName, Delta: &counterValue})
+				_ = repo.Create(ctx, model.Metric{ID: gaugeName, MType: model.Gauge, Value: &gaugeValue})
+				_ = repo.Create(ctx, model.Metric{ID: counterName, MType: model.Counter, Delta: &counterValue})
 
-				_, _ = repo.GetByID(gaugeName)
-				_, _ = repo.GetByID(counterName)
-			}()
+				_, _ = repo.GetByID(ctx, gaugeName)
+				_, _ = repo.GetByID(ctx, counterName)
+			}(i)
 		}
 		wg.Wait()
 	})

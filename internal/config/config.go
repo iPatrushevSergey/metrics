@@ -104,12 +104,27 @@ type AgentConfig struct {
 	Address        string
 	PollInterval   time.Duration
 	ReportInterval time.Duration
+	Key            string // Key for hash calculation
+	RateLimit      int
+	LogLevel       string
+}
+
+func (c *AgentConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("address", c.Address)
+	enc.AddDuration("poll_interval", c.PollInterval)
+	enc.AddDuration("report_interval", c.ReportInterval)
+	enc.AddInt("rate_limit", c.RateLimit)
+	enc.AddString("log_level", c.LogLevel)
+	return nil
 }
 
 type agentInternalConfig struct {
 	Address        Address  `env:"ADDRESS"`
 	PollInterval   Duration `env:"POLL_INTERVAL"`
 	ReportInterval Duration `env:"REPORT_INTERVAL"`
+	Key            string   `env:"KEY"`
+	RateLimit      int      `env:"RATE_LIMIT"`
+	LogLevel       string   `env:"LOG_LEVEL"`
 }
 
 // Environment variables take precedence over flags.
@@ -122,9 +137,15 @@ func LoadAgentConfig() (AgentConfig, error) {
 	cfg.Address = Address{Schema: "http", Host: "127.0.0.1", Port: 8080}
 	cfg.PollInterval = Duration{Duration: 2 * time.Second}
 	cfg.ReportInterval = Duration{Duration: 10 * time.Second}
+	cfg.Key = ""
+	cfg.RateLimit = 0
+	cfg.LogLevel = "info"
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.Var(&cfg.ReportInterval, "r", "frequency of sending metrics (seconds or duration)")
 	fs.Var(&cfg.PollInterval, "p", "frequency of metrics polling (seconds or duration)")
+	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
+	fs.IntVar(&cfg.RateLimit, "l", 0, "rate limit for concurrent batch requests (0 = sequential, >0 = worker pool size)")
+	fs.StringVar(&cfg.LogLevel, "log", "info", "logging level")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -140,6 +161,9 @@ func LoadAgentConfig() (AgentConfig, error) {
 		Address:        cfg.Address.URL(),
 		PollInterval:   cfg.PollInterval.Duration,
 		ReportInterval: cfg.ReportInterval.Duration,
+		Key:            cfg.Key,
+		RateLimit:      cfg.RateLimit,
+		LogLevel:       cfg.LogLevel,
 	}
 
 	return finalCfg, nil
@@ -154,12 +178,15 @@ type ServerConfig struct {
 	StoreInterval   time.Duration
 	FileStoragePath string
 	Restore         bool
+	DatabaseDSN     string
+	EnableRetry     bool   // Enable retry logic for PostgreSQL operations
+	Key             string // Key for hash calculation
 }
 
 func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("address", c.Address)
 	enc.AddString("level", c.LogLevel)
-	enc.AddDuration("interval", c.StoreInterval)
+	enc.AddDuration("store_interval", c.StoreInterval)
 	enc.AddString("storage_path", c.FileStoragePath)
 	enc.AddBool("restore", c.Restore)
 	return nil
@@ -171,6 +198,9 @@ type serverInternalConfig struct {
 	StoreInterval   Duration `env:"STORE_INTERVAL"`
 	FileStoragePath string   `env:"FILE_STORAGE_PATH"`
 	Restore         bool     `env:"RESTORE"`
+	DatabaseDSN     string   `env:"DATABASE_DSN"`
+	EnableRetry     bool     `env:"ENABLE_RETRY"`
+	Key             string   `env:"KEY"`
 }
 
 // Environment variables take precedence over flags.
@@ -182,11 +212,24 @@ func LoadServerConfig() (ServerConfig, error) {
 	// Default
 	cfg.Address = Address{Host: "127.0.0.1", Port: 8080}
 	cfg.StoreInterval = Duration{Duration: 300 * time.Second}
+	cfg.EnableRetry = true
+	cfg.Key = ""
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.StringVar(&cfg.LogLevel, "l", "info", "logging level")
 	fs.Var(&cfg.StoreInterval, "i", "server data save interval (seconds or duration)")
 	fs.StringVar(&cfg.FileStoragePath, "f", "metrics.json", "file path")
 	fs.BoolVar(&cfg.Restore, "r", true, "load data from file at startup")
+	fs.BoolVar(
+		&cfg.EnableRetry,
+		"retry",
+		true,
+		"enable retry logic for PostgreSQL operations (3 retries with intervals 1s, 3s, 5s)",
+	)
+	fs.StringVar(
+		&cfg.DatabaseDSN, "d", "",
+		"database dsn, example: postgres://user:password@localhost:5432/db?sslmode=disable",
+	)
+	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -204,6 +247,9 @@ func LoadServerConfig() (ServerConfig, error) {
 		StoreInterval:   cfg.StoreInterval.Duration,
 		FileStoragePath: cfg.FileStoragePath,
 		Restore:         cfg.Restore,
+		DatabaseDSN:     cfg.DatabaseDSN,
+		EnableRetry:     cfg.EnableRetry,
+		Key:             cfg.Key,
 	}
 
 	return finalCfg, nil

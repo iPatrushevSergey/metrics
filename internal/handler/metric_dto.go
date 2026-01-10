@@ -2,11 +2,14 @@ package handler
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/iPatrushevSergey/metrics/internal/model"
 )
 
 //go:generate easyjson -all $GOFILE
+
+// MetricDTO представляет метрику в формате для HTTP транспорта
 type MetricDTO struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`
@@ -32,13 +35,16 @@ func modelToDTO(m model.Metric) MetricDTO {
 }
 
 func dtoToModel(dto MetricDTO) (model.Metric, error) {
+	// Нормализация типа метрики
+	normalizedType := strings.ToLower(strings.TrimSpace(dto.MType))
+
 	m := model.Metric{
-		ID:    dto.ID,
-		MType: dto.MType,
-		Hash:  dto.Hash,
+		ID:    strings.TrimSpace(dto.ID),
+		MType: normalizedType,
+		Hash:  strings.TrimSpace(dto.Hash),
 	}
 
-	switch dto.MType {
+	switch normalizedType {
 	case model.Counter:
 		m.Delta = dto.Delta
 	case model.Gauge:
