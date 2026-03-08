@@ -59,6 +59,17 @@ func WaitForShutdown(app *App, cfg config.ServerConfig, loggerInstance logger.Lo
 		return err
 	}
 
+	if app.AuditPublisher != nil {
+		if err := app.AuditPublisher.Close(ctx); err != nil {
+			loggerInstance.Error("Audit shutdown failed", zap.Error(err))
+		}
+	}
+	for _, o := range app.AuditObservers {
+		if err := o.Close(); err != nil {
+			loggerInstance.Error("Audit observer close failed", zap.Error(err))
+		}
+	}
+
 	loggerInstance.Debug("Server stopped gracefully")
 	return nil
 }
