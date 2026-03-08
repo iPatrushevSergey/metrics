@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iPatrushevSergey/metrics/internal/audit"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
@@ -79,7 +80,7 @@ func TestMetricHandlerUpdate(t *testing.T) {
 			repo := inmemory.NewMemStorageMetricRepository()
 			metricService := service.NewMetricService(repo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.POST("/update/:type/:name/:value", metricHandler.Update)
@@ -158,7 +159,7 @@ func TestMetricHandlerGetValue(t *testing.T) {
 
 			metricService := service.NewMetricService(typedRepo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.GET("/value/:type/:name", metricHandler.GetValue)
@@ -234,7 +235,7 @@ func TestMetricHandlerGetJSON(t *testing.T) {
 
 			metricService := service.NewMetricService(typedRepo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.POST("/value", metricHandler.GetJSON)
@@ -325,7 +326,7 @@ func TestMetricHandlerGetAll(t *testing.T) {
 
 			metricService := service.NewMetricService(typedRepo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.GET("/", metricHandler.GetAll)
