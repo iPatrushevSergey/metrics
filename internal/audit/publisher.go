@@ -134,7 +134,7 @@ func (p *publisher) runWorker(worker observerWorker) {
 
 func cloneEvent(e Event) Event {
 	return Event{
-		Ts:        e.Ts,
+		TS:        e.TS,
 		IPAddress: e.IPAddress,
 		Metrics:   slices.Clone(e.Metrics),
 	}

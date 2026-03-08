@@ -35,7 +35,7 @@ func easyjsonF642ad3eDecodeGithubComIPatrushevSergeyMetricsInternalAudit(in *jle
 			if in.IsNull() {
 				in.Skip()
 			} else {
-				out.Ts = int64(in.Int64())
+				out.TS = int64(in.Int64())
 			}
 		case "metrics":
 			if in.IsNull() {
@@ -87,7 +87,7 @@ func easyjsonF642ad3eEncodeGithubComIPatrushevSergeyMetricsInternalAudit(out *jw
 	{
 		const prefix string = ",\"ts\":"
 		out.RawString(prefix[1:])
-		out.Int64(int64(in.Ts))
+		out.Int64(int64(in.TS))
 	}
 	{
 		const prefix string = ",\"metrics\":"

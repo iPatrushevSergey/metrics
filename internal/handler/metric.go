@@ -285,7 +285,7 @@ func (h *MetricHandler) notifyAudit(ip string, metricNames []string) {
 	}
 
 	h.audit.Notify(audit.Event{
-		Ts:        time.Now().Unix(),
+		TS:        time.Now().Unix(),
 		Metrics:   metricNames,
 		IPAddress: ip,
 	})
