@@ -12,6 +12,7 @@ import (
 	"html/template"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iPatrushevSergey/metrics/internal/audit"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/service"
@@ -46,12 +47,18 @@ type responseMetrics struct {
 type MetricHandler struct {
 	metricService *service.MetricsService
 	logger        logger.Logger
+	audit         audit.Publisher
 }
 
-func NewMetricHandler(s *service.MetricsService, l logger.Logger) *MetricHandler {
+func NewMetricHandler(s *service.MetricsService, l logger.Logger, a audit.Publisher) *MetricHandler {
+	if a == nil {
+		a = audit.NewPublisher(nil)
+	}
+
 	return &MetricHandler{
 		metricService: s,
 		logger:        l,
+		audit:         a,
 	}
 }
 
@@ -166,6 +173,8 @@ func (h *MetricHandler) Update(c *gin.Context) {
 		return
 	}
 
+	h.notifyAudit(c.ClientIP(), []string{metricName})
+
 	c.Status(http.StatusOK)
 }
 
@@ -199,6 +208,8 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 		}
 		return
 	}
+
+	h.notifyAudit(c.ClientIP(), []string{metricModel.ID})
 
 	c.Status(http.StatusOK)
 }
@@ -238,6 +249,14 @@ func (h *MetricHandler) UpdatesJSON(c *gin.Context) {
 		return
 	}
 
+	// Successful processing of a batch of metrics from JSON body
+	names := make([]string, 0, len(metrics))
+	for _, m := range metrics {
+		names = append(names, m.ID)
+	}
+
+	h.notifyAudit(c.ClientIP(), names)
+
 	c.Status(http.StatusOK)
 }
 
@@ -258,4 +277,16 @@ func (h *MetricHandler) PingDB(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusOK)
+}
+
+func (h *MetricHandler) notifyAudit(ip string, metricNames []string) {
+	if h.audit == nil || len(metricNames) == 0 {
+		return
+	}
+
+	h.audit.Notify(audit.Event{
+		Ts:        time.Now().Unix(),
+		Metrics:   metricNames,
+		IPAddress: ip,
+	})
 }
