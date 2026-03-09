@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/iPatrushevSergey/metrics/internal/model"
+	"github.com/iPatrushevSergey/metrics/internal/repository"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -165,5 +166,88 @@ func TestMetricServiceUpdate(t *testing.T) {
 			assert.Equal(t, tt.want.metric.Value, resultMetric.Value)
 			assert.Equal(t, tt.want.metric.Delta, resultMetric.Delta)
 		})
+	}
+}
+
+const serviceBenchMetricsPerType = 50
+
+func fillRepoForBench(ctx context.Context, repo repository.MetricRepository, n int) {
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("gauge_%d", i)
+		v := float64(i)
+		_ = repo.Create(ctx, model.Metric{ID: name, MType: model.Gauge, Value: &v})
+	}
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("counter_%d", i)
+		d := int64(i)
+		_ = repo.Create(ctx, model.Metric{ID: name, MType: model.Counter, Delta: &d})
+	}
+}
+
+func BenchmarkMetricsService_GetValue(b *testing.B) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, serviceBenchMetricsPerType)
+	svc := NewMetricService(repo)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = svc.GetValue(ctx, model.Gauge, "gauge_0")
+	}
+}
+
+func BenchmarkMetricsService_GetAll(b *testing.B) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, serviceBenchMetricsPerType)
+	svc := NewMetricService(repo)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = svc.GetAll(ctx)
+	}
+}
+
+func BenchmarkMetricsService_Update(b *testing.B) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, serviceBenchMetricsPerType)
+	svc := NewMetricService(repo)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = svc.Update(ctx, model.Gauge, "gauge_0", "123.45")
+	}
+}
+
+func BenchmarkMetricsService_UpdateJSON(b *testing.B) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, serviceBenchMetricsPerType)
+	svc := NewMetricService(repo)
+	v := 456.78
+	m := model.Metric{ID: "gauge_0", MType: model.Gauge, Value: &v}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = svc.UpdateJSON(ctx, m)
+	}
+}
+
+func BenchmarkMetricsService_UpdatesJSON(b *testing.B) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, 20)
+	svc := NewMetricService(repo)
+	metrics := make([]model.Metric, 0, 30)
+	for i := 0; i < 30; i++ {
+		name := fmt.Sprintf("batch_%d", i)
+		val := float64(i)
+		metrics = append(metrics, model.Metric{ID: name, MType: model.Gauge, Value: &val})
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = svc.UpdatesJSON(ctx, metrics)
 	}
 }
