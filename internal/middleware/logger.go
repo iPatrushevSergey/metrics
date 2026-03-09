@@ -44,7 +44,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 
 		duration := time.Since(start)
 
-		logger.Log.Info(
+		logger.Log.Debug(
 			"HTTP Request processed",
 			zap.String("URI", ctx.Request.RequestURI),
 			zap.String("method", ctx.Request.Method),
