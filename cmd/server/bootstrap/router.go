@@ -1,8 +1,8 @@
 package bootstrap
 
 import (
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-
 	gojson "github.com/goccy/go-json"
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
@@ -31,6 +31,8 @@ func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig, 
 		c.Set("json.Serializer", &GinJSONSerializer{})
 		c.Next()
 	})
+
+	pprof.Register(router)
 
 	router.GET("/ping", metricHandler.PingDB)
 	router.GET("/", metricHandler.GetAll)
