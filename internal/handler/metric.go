@@ -132,7 +132,9 @@ func (h *MetricHandler) GetAll(c *gin.Context) {
 	}
 	sort.Strings(keys)
 
-	data := responseMetrics{}
+	data := responseMetrics{
+		Metrics: make([]templateData, 0, len(metrics)),
+	}
 	for _, key := range keys {
 		value, err := h.metricService.FormatMetric(metrics[key])
 		if err != nil {
