@@ -169,6 +169,113 @@ func TestMetricServiceUpdate(t *testing.T) {
 	}
 }
 
+func TestFormatMetric(t *testing.T) {
+	repo := inmemory.NewMemStorageMetricRepository()
+	svc := NewMetricService(repo)
+	v := 1.5
+	d := int64(10)
+
+	t.Run("gauge", func(t *testing.T) {
+		s, err := svc.FormatMetric(model.Metric{MType: model.Gauge, Value: &v})
+		require.NoError(t, err)
+		assert.Equal(t, "1.5", s)
+	})
+	t.Run("counter", func(t *testing.T) {
+		s, err := svc.FormatMetric(model.Metric{MType: model.Counter, Delta: &d})
+		require.NoError(t, err)
+		assert.Equal(t, "10", s)
+	})
+	t.Run("gauge nil value", func(t *testing.T) {
+		_, err := svc.FormatMetric(model.Metric{MType: model.Gauge, Value: nil})
+		require.Error(t, err)
+	})
+	t.Run("counter nil delta", func(t *testing.T) {
+		_, err := svc.FormatMetric(model.Metric{MType: model.Counter, Delta: nil})
+		require.Error(t, err)
+	})
+	t.Run("unknown type", func(t *testing.T) {
+		_, err := svc.FormatMetric(model.Metric{MType: "unknown"})
+		require.Error(t, err)
+	})
+}
+
+func TestPingDB(t *testing.T) {
+	repo := inmemory.NewMemStorageMetricRepository()
+	svc := NewMetricService(repo)
+	err := svc.PingDB(context.Background())
+	require.NoError(t, err)
+}
+
+func TestMetricServiceUpdateJSON(t *testing.T) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	svc := NewMetricService(repo)
+
+	t.Run("create gauge", func(t *testing.T) {
+		v := 1.5
+		err := svc.UpdateJSON(ctx, model.Metric{ID: "g1", MType: model.Gauge, Value: &v})
+		require.NoError(t, err)
+		val, err := svc.GetValue(ctx, model.Gauge, "g1")
+		require.NoError(t, err)
+		assert.Equal(t, "1.5", val)
+	})
+	t.Run("update gauge", func(t *testing.T) {
+		v := 2.5
+		err := svc.UpdateJSON(ctx, model.Metric{ID: "g1", MType: model.Gauge, Value: &v})
+		require.NoError(t, err)
+		val, err := svc.GetValue(ctx, model.Gauge, "g1")
+		require.NoError(t, err)
+		assert.Equal(t, "2.5", val)
+	})
+	t.Run("create and increment counter", func(t *testing.T) {
+		d := int64(1)
+		err := svc.UpdateJSON(ctx, model.Metric{ID: "c1", MType: model.Counter, Delta: &d})
+		require.NoError(t, err)
+		err = svc.UpdateJSON(ctx, model.Metric{ID: "c1", MType: model.Counter, Delta: &d})
+		require.NoError(t, err)
+		val, err := svc.GetValue(ctx, model.Counter, "c1")
+		require.NoError(t, err)
+		assert.Equal(t, "2", val)
+	})
+}
+
+func TestMetricServiceUpdatesJSON(t *testing.T) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	svc := NewMetricService(repo)
+
+	v1, v2 := 1.0, 2.0
+	d1 := int64(10)
+	metrics := []model.Metric{
+		{ID: "g1", MType: model.Gauge, Value: &v1},
+		{ID: "g2", MType: model.Gauge, Value: &v2},
+		{ID: "c1", MType: model.Counter, Delta: &d1},
+	}
+	err := svc.UpdatesJSON(ctx, metrics)
+	require.NoError(t, err)
+
+	all, err := svc.GetAll(ctx)
+	require.NoError(t, err)
+	assert.Len(t, all, 3)
+}
+
+func TestMetricServiceUpdatesJSON_mergeDuplicates(t *testing.T) {
+	ctx := context.Background()
+	repo := inmemory.NewMemStorageMetricRepository()
+	svc := NewMetricService(repo)
+
+	d1, d2 := int64(5), int64(3)
+	metrics := []model.Metric{
+		{ID: "c1", MType: model.Counter, Delta: &d1},
+		{ID: "c1", MType: model.Counter, Delta: &d2},
+	}
+	err := svc.UpdatesJSON(ctx, metrics)
+	require.NoError(t, err)
+	val, err := svc.GetValue(ctx, model.Counter, "c1")
+	require.NoError(t, err)
+	assert.Equal(t, "8", val)
+}
+
 const serviceBenchMetricsPerType = 50
 
 func fillRepoForBench(ctx context.Context, repo repository.MetricRepository, n int) {
