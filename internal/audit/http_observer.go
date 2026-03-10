@@ -10,12 +10,13 @@ import (
 	"github.com/mailru/easyjson"
 )
 
-// HTTPObserver sends events to the configured URL.
+// HTTPObserver sends audit events to a configured HTTP.
 type HTTPObserver struct {
 	url    string
 	client *http.Client
 }
 
+// NewHTTPObserver creates an HTTPObserver for the given URL.
 func NewHTTPObserver(rawURL string, client *http.Client) (*HTTPObserver, error) {
 	if client == nil {
 		return nil, fmt.Errorf("http client is required")

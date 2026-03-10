@@ -69,8 +69,7 @@ func (a *Address) URL() string {
 	return fmt.Sprintf("%s://%s:%d", a.Schema, a.Host, a.Port)
 }
 
-// === Custom Flag Type ===
-
+// Duration is a custom flag type for time duration (seconds or duration string).
 type Duration struct {
 	time.Duration
 }
@@ -127,7 +126,7 @@ type agentInternalConfig struct {
 	LogLevel       string   `env:"LOG_LEVEL"`
 }
 
-// Environment variables take precedence over flags.
+// LoadAgentConfig loads agent configuration from flags and environment (env overrides flags).
 func LoadAgentConfig() (AgentConfig, error) {
 	cfg := agentInternalConfig{}
 
@@ -213,7 +212,7 @@ type serverInternalConfig struct {
 	AuditHTTPTimeout Duration `env:"AUDIT_HTTP_TIMEOUT"`
 }
 
-// Environment variables take precedence over flags.
+// LoadServerConfig loads server configuration from flags and environment (env overrides flags).
 func LoadServerConfig() (ServerConfig, error) {
 	cfg := serverInternalConfig{}
 

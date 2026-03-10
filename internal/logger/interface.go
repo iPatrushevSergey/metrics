@@ -2,7 +2,7 @@ package logger
 
 import "go.uber.org/zap"
 
-// Logger интерфейс для логирования
+// Logger is the logging interface used by the application.
 type Logger interface {
 	Debug(msg string, fields ...zap.Field)
 	Info(msg string, fields ...zap.Field)
@@ -11,11 +11,12 @@ type Logger interface {
 	Fatal(msg string, fields ...zap.Field)
 }
 
-// ZapLoggerAdapter адаптер для zap.Logger, реализующий интерфейс Logger
+// ZapLoggerAdapter adapts zap.Logger to the Logger interface.
 type ZapLoggerAdapter struct {
 	logger *zap.Logger
 }
 
+// NewZapLoggerAdapter returns a Logger implementation backed by the given zap.Logger.
 func NewZapLoggerAdapter(logger *zap.Logger) *ZapLoggerAdapter {
 	return &ZapLoggerAdapter{logger: logger}
 }

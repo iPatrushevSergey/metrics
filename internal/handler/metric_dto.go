@@ -9,7 +9,7 @@ import (
 
 //go:generate easyjson -all $GOFILE
 
-// MetricDTO представляет метрику в формате для HTTP транспорта
+// MetricDTO is the metric representation for HTTP JSON API.
 type MetricDTO struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`

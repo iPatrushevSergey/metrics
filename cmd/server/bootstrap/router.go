@@ -10,12 +10,15 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/middleware"
 )
 
+// GinJSONSerializer implements JSON marshal/unmarshal for the router.
 type GinJSONSerializer struct{}
 
+// Serialize marshals data to JSON bytes.
 func (g *GinJSONSerializer) Serialize(c *gin.Context, data interface{}) ([]byte, error) {
 	return gojson.Marshal(data)
 }
 
+// Deserialize unmarshals JSON bytes into v.
 func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface{}) error {
 	return gojson.Unmarshal(data, v)
 }

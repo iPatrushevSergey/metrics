@@ -90,17 +90,17 @@ func (c *PostgresErrorClassifier) classifyPgError(pgErr *pgconn.PgError) ErrorCl
 	return NonRetriable
 }
 
-// IsRetriable checks whether the operation can be repeated for this error
+// IsRetriable reports whether the error is classified as retriable.
 func (c *PostgresErrorClassifier) IsRetriable(err error) bool {
 	return c.Classify(err) == Retriable
 }
 
-// IsNonRetriable checks whether the error is non-repeatable
+// IsNonRetriable reports whether the error is classified as non-retriable.
 func (c *PostgresErrorClassifier) IsNonRetriable(err error) bool {
 	return c.Classify(err) == NonRetriable
 }
 
-// GetErrorCode extracts the PostgreSQL error code from the error, if possible
+// GetErrorCode returns the PostgreSQL error code from err, or an error if err is not a PgError.
 func (c *PostgresErrorClassifier) GetErrorCode(err error) (string, error) {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {

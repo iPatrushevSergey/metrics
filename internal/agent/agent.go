@@ -24,17 +24,20 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
+// CustomStats holds agent-specific metrics.
 type CustomStats struct {
 	PollCount   int64
 	RandomValue float64
 }
 
+// GopsutilStats holds system metrics from gopsutil (memory, CPU).
 type GopsutilStats struct {
 	TotalMemory    float64
 	FreeMemory     float64
 	CPUutilization []float64
 }
 
+// Agent collects metrics and sends them to the server.
 type Agent struct {
 	config      config.AgentConfig
 	client      *http.Client
@@ -54,6 +57,7 @@ type Agent struct {
 	workersWg      sync.WaitGroup
 }
 
+// NewAgent creates an Agent with the given config and logger.
 func NewAgent(config config.AgentConfig, logger logger.Logger) (*Agent, error) {
 	if config.RateLimit < 0 {
 		return nil, fmt.Errorf("rate limit must be greater than or equal to 0, got: %d", config.RateLimit)

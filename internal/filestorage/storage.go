@@ -35,16 +35,19 @@ func dtoToMetric(dto metricFileDTO) model.Metric {
 	}
 }
 
+// FileStorage persists metrics as JSON in a single file.
 type FileStorage struct {
 	FilePath string
 }
 
+// NewFileStorage returns a FileStorage that uses the given file path.
 func NewFileStorage(path string) *FileStorage {
 	return &FileStorage{
 		FilePath: path,
 	}
 }
 
+// Save writes all metrics to the file, overwriting it.
 func (fs *FileStorage) Save(metrics map[string]model.Metric) error {
 	file, err := os.OpenFile(fs.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
@@ -61,6 +64,7 @@ func (fs *FileStorage) Save(metrics map[string]model.Metric) error {
 	return encoder.Encode(metricList)
 }
 
+// Load reads all metrics from the file. Returns empty slice if file is empty or missing.
 func (fs *FileStorage) Load() ([]model.Metric, error) {
 	file, err := os.OpenFile(fs.FilePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {

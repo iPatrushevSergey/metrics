@@ -52,16 +52,19 @@ func formatMetricToStr(metric model.Metric) (string, error) {
 	}
 }
 
+// MetricsService provides metric read/update operations using a MetricRepository.
 type MetricsService struct {
 	metricRepo repository.MetricRepository
 }
 
+// NewMetricService returns a new MetricsService backed by the given repository.
 func NewMetricService(
 	repo repository.MetricRepository,
 ) *MetricsService {
 	return &MetricsService{metricRepo: repo}
 }
 
+// GetValue returns the metric value as a string by type and name.
 func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (string, error) {
 	if err := validateMetricType(mType); err != nil {
 		return "", err
@@ -87,7 +90,7 @@ func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (str
 	return formattedMetric, nil
 }
 
-// GetMetric returns a metric by type and name
+// GetMetric returns a metric by type and name.
 func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (model.Metric, error) {
 	if err := validateMetricType(mType); err != nil {
 		return model.Metric{}, err

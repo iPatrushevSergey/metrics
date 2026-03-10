@@ -10,8 +10,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// RunMigrations выполняет миграции базы данных PostgreSQL
-// dsn - строка подключения к базе данных в формате DSN
+// RunMigrations runs PostgreSQL migrations from the migrations directory. dsn is the database connection string.
 func RunMigrations(dsn string) error {
 	m, err := migrate.New("file://migrations", dsn)
 	if err != nil {

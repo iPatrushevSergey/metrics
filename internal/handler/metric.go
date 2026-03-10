@@ -44,12 +44,14 @@ type responseMetrics struct {
 	Metrics []templateData
 }
 
+// MetricHandler handles HTTP requests for metrics.
 type MetricHandler struct {
 	metricService *service.MetricsService
 	logger        logger.Logger
 	audit         audit.Publisher
 }
 
+// NewMetricHandler creates a new MetricHandler.
 func NewMetricHandler(s *service.MetricsService, l logger.Logger, a audit.Publisher) *MetricHandler {
 	if a == nil {
 		a = audit.NewPublisher(nil)
@@ -84,7 +86,7 @@ func (h *MetricHandler) GetValue(c *gin.Context) {
 	c.String(http.StatusOK, "%s", metricVal)
 }
 
-// GetJSON returns the metric in JSON format
+// GetJSON returns a single metric in JSON by request body.
 func (h *MetricHandler) GetJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto MetricDTO
