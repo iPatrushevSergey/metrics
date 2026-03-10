@@ -152,6 +152,43 @@ func TestMemStorageMetricRepository(t *testing.T) {
 		}
 		wg.Wait()
 	})
+
+	t.Run("GetByIDs", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		v := 1.5
+		d := int64(10)
+		_ = repo.Create(ctx, model.Metric{ID: "a", MType: model.Gauge, Value: &v})
+		_ = repo.Create(ctx, model.Metric{ID: "b", MType: model.Counter, Delta: &d})
+		byIDs, err := repo.GetByIDs(ctx, []string{"a", "b", "missing"})
+		require.NoError(t, err)
+		assert.Len(t, byIDs, 2)
+		assert.Contains(t, byIDs, "a")
+		assert.Contains(t, byIDs, "b")
+	})
+
+	t.Run("CreateBatch", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		v1, v2 := 1.0, 2.0
+		batch := []model.Metric{
+			{ID: "g1", MType: model.Gauge, Value: &v1},
+			{ID: "g2", MType: model.Gauge, Value: &v2},
+		}
+		err := repo.CreateBatch(ctx, batch)
+		require.NoError(t, err)
+		all, _ := repo.GetAll(ctx)
+		assert.Len(t, all, 2)
+	})
+
+	t.Run("UpdateBatch", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		v := 1.0
+		_ = repo.Create(ctx, model.Metric{ID: "g1", MType: model.Gauge, Value: &v})
+		v2 := 2.0
+		err := repo.UpdateBatch(ctx, []model.Metric{{ID: "g1", MType: model.Gauge, Value: &v2}})
+		require.NoError(t, err)
+		m, _ := repo.GetByID(ctx, "g1")
+		assert.Equal(t, 2.0, *m.Value)
+	})
 }
 
 const benchmarkMetricsPerType = 100
