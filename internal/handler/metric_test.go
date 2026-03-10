@@ -359,6 +359,21 @@ func TestMetricHandlerGetAll(t *testing.T) {
 	}
 }
 
+func TestMetricHandlerPingDB(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := inmemory.NewMemStorageMetricRepository()
+	metricService := service.NewMetricService(repo)
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
+	router := gin.New()
+	router.GET("/ping", metricHandler.PingDB)
+
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
 // handlerBenchHelper creates router and handler with in-memory repo, заполненным данными из repoState через интерфейс.
 func handlerBenchHelper(repoState map[string]model.Metric) (*gin.Engine, *MetricHandler) {
 	repo := inmemory.NewMemStorageMetricRepository()
