@@ -49,8 +49,9 @@ func Example() {
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
 
-	body, _ := io.ReadAll(w2.Result().Body)
-	w2.Result().Body.Close()
+	resp2 := w2.Result()
+	defer resp2.Body.Close()
+	body, _ := io.ReadAll(resp2.Body)
 	fmt.Println(string(body))
 	// Output:
 	// 1024.5
@@ -85,8 +86,9 @@ func ExampleMetricHandler_GetValue() {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	body, _ := io.ReadAll(w.Result().Body)
-	w.Result().Body.Close()
+	resp := w.Result()
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
 	// Output:
 	// 1024.5
@@ -102,7 +104,9 @@ func ExampleMetricHandler_UpdateJSON() {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	fmt.Println("status:", w.Result().StatusCode)
+	resp := w.Result()
+	defer resp.Body.Close()
+	fmt.Println("status:", resp.StatusCode)
 	// Output:
 	// status: 200
 }
@@ -125,8 +129,9 @@ func ExampleMetricHandler_GetJSON() {
 	getW := httptest.NewRecorder()
 	router.ServeHTTP(getW, getReq)
 
-	respBody, _ := io.ReadAll(getW.Result().Body)
-	getW.Result().Body.Close()
+	getResp := getW.Result()
+	defer getResp.Body.Close()
+	respBody, _ := io.ReadAll(getResp.Body)
 	fmt.Println(string(respBody))
 	// Output:
 	// {"id":"memory","type":"gauge","value":512}
