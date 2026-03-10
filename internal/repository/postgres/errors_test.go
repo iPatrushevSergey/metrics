@@ -58,3 +58,10 @@ func TestPostgresErrorClassifier_GetErrorCode_success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "42P01", code)
 }
+
+func TestPostgresErrorClassifier_Classify_pgError_nonRetriable(t *testing.T) {
+	c := NewPostgresErrorClassifier()
+	// e.g. unique_violation — не в списке retriable
+	pgErr := &pgconn.PgError{Code: "23505"}
+	assert.Equal(t, NonRetriable, c.Classify(pgErr))
+}
