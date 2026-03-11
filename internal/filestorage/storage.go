@@ -18,7 +18,7 @@ type metricFileDTO struct {
 func metricToDTO(m model.Metric) metricFileDTO {
 	return metricFileDTO{
 		ID:    m.ID,
-		MType: m.MType,
+		MType: string(m.MType),
 		Delta: m.Delta,
 		Value: m.Value,
 		Hash:  m.Hash,
@@ -28,7 +28,7 @@ func metricToDTO(m model.Metric) metricFileDTO {
 func dtoToMetric(dto metricFileDTO) model.Metric {
 	return model.Metric{
 		ID:    dto.ID,
-		MType: dto.MType,
+		MType: model.MetricType(dto.MType),
 		Delta: dto.Delta,
 		Value: dto.Value,
 		Hash:  dto.Hash,

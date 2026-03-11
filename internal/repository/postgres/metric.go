@@ -26,15 +26,15 @@ func (r *PostgresMetricRepository) GetByID(ctx context.Context, id string) (mode
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var m model.Metric
-
-	err := row.Scan(&m.ID, &m.MType, &m.Delta, &m.Value, &m.Hash)
+	var mtype string
+	err := row.Scan(&m.ID, &mtype, &m.Delta, &m.Value, &m.Hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Metric{}, repository.ErrNotFound
 		}
 		return model.Metric{}, err
 	}
-
+	m.MType = model.MetricType(mtype)
 	return m, nil
 }
 
@@ -54,9 +54,11 @@ func (r *PostgresMetricRepository) GetByIDs(ctx context.Context, ids []string) (
 
 	for rows.Next() {
 		var m model.Metric
-		if err := rows.Scan(&m.ID, &m.MType, &m.Delta, &m.Value, &m.Hash); err != nil {
+		var mtype string
+		if err := rows.Scan(&m.ID, &mtype, &m.Delta, &m.Value, &m.Hash); err != nil {
 			return nil, err
 		}
+		m.MType = model.MetricType(mtype)
 		result[m.ID] = m
 	}
 
@@ -79,9 +81,11 @@ func (r *PostgresMetricRepository) GetAll(ctx context.Context) (map[string]model
 
 	for rows.Next() {
 		var m model.Metric
-		if err := rows.Scan(&m.ID, &m.MType, &m.Delta, &m.Value, &m.Hash); err != nil {
+		var mtype string
+		if err := rows.Scan(&m.ID, &mtype, &m.Delta, &m.Value, &m.Hash); err != nil {
 			return nil, err
 		}
+		m.MType = model.MetricType(mtype)
 		metrics[m.ID] = m
 	}
 
@@ -102,7 +106,7 @@ func (r *PostgresMetricRepository) Create(ctx context.Context, metric model.Metr
 	}
 
 	query := `INSERT INTO metrics (id, mtype, delta, value, hash) VALUES ($1, $2, $3, $4, $5)`
-	_, err = r.db.ExecContext(ctx, query, metric.ID, metric.MType, metric.Delta, metric.Value, metric.Hash)
+	_, err = r.db.ExecContext(ctx, query, metric.ID, string(metric.MType), metric.Delta, metric.Value, metric.Hash)
 	if err != nil {
 		return err
 	}
@@ -128,7 +132,7 @@ func (r *PostgresMetricRepository) CreateBatch(ctx context.Context, metrics []mo
 	defer stmt.Close()
 
 	for _, metric := range metrics {
-		if _, err := stmt.ExecContext(ctx, metric.ID, metric.MType, metric.Delta, metric.Value, metric.Hash); err != nil {
+		if _, err := stmt.ExecContext(ctx, metric.ID, string(metric.MType), metric.Delta, metric.Value, metric.Hash); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -143,7 +147,7 @@ func (r *PostgresMetricRepository) CreateBatch(ctx context.Context, metrics []mo
 
 func (r *PostgresMetricRepository) Update(ctx context.Context, id string, metric model.Metric) error {
 	query := `UPDATE metrics SET mtype = $1, delta = $2, value = $3, hash = $4 WHERE id = $5`
-	result, err := r.db.ExecContext(ctx, query, metric.MType, metric.Delta, metric.Value, metric.Hash, id)
+	result, err := r.db.ExecContext(ctx, query, string(metric.MType), metric.Delta, metric.Value, metric.Hash, id)
 	if err != nil {
 		return err
 	}
@@ -183,7 +187,7 @@ func (r *PostgresMetricRepository) UpdateBatch(ctx context.Context, metrics []mo
 	defer stmt.Close()
 
 	for _, metric := range metrics {
-		result, err := stmt.ExecContext(ctx, metric.MType, metric.Delta, metric.Value, metric.Hash, metric.ID)
+		result, err := stmt.ExecContext(ctx, string(metric.MType), metric.Delta, metric.Value, metric.Hash, metric.ID)
 		if err != nil {
 			tx.Rollback()
 			return err

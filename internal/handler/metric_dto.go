@@ -21,7 +21,7 @@ type MetricDTO struct {
 func modelToDTO(m model.Metric) MetricDTO {
 	dto := MetricDTO{
 		ID:    m.ID,
-		MType: m.MType,
+		MType: string(m.MType),
 		Hash:  m.Hash,
 	}
 
@@ -40,11 +40,11 @@ func dtoToModel(dto MetricDTO) (model.Metric, error) {
 
 	m := model.Metric{
 		ID:    strings.TrimSpace(dto.ID),
-		MType: normalizedType,
+		MType: model.MetricType(normalizedType),
 		Hash:  strings.TrimSpace(dto.Hash),
 	}
 
-	switch normalizedType {
+	switch model.MetricType(normalizedType) {
 	case model.Counter:
 		m.Delta = dto.Delta
 	case model.Gauge:

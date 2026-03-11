@@ -22,7 +22,7 @@ var (
 )
 
 func validateMetricType(mType string) error {
-	switch mType {
+	switch model.MetricType(mType) {
 	case model.Gauge, model.Counter:
 		return nil
 	default:
@@ -78,7 +78,7 @@ func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (str
 		return "", err
 	}
 
-	if metric.MType != mType {
+	if metric.MType != model.MetricType(mType) {
 		return "", ErrNotFound
 	}
 
@@ -104,7 +104,7 @@ func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (mo
 		return model.Metric{}, err
 	}
 
-	if metric.MType != mType {
+	if metric.MType != model.MetricType(mType) {
 		return model.Metric{}, ErrNotFound
 	}
 
@@ -136,10 +136,10 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 
 	metric := model.Metric{
 		ID:    mName,
-		MType: mType,
+		MType: model.MetricType(mType),
 	}
 
-	switch mType {
+	switch model.MetricType(mType) {
 	case model.Gauge:
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
@@ -166,7 +166,7 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 		return nil
 	}
 
-	switch mType {
+	switch model.MetricType(mType) {
 	case model.Counter:
 		if metric.Delta != nil {
 			if existing.Delta != nil {
@@ -188,7 +188,7 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 
 // UpdateJSON updates or creates a metric from the domain model
 func (s *MetricsService) UpdateJSON(ctx context.Context, metric model.Metric) error {
-	if err := validateMetricType(metric.MType); err != nil {
+	if err := validateMetricType(string(metric.MType)); err != nil {
 		return err
 	}
 
@@ -241,7 +241,7 @@ func (s *MetricsService) UpdatesJSON(ctx context.Context, metrics []model.Metric
 	// for gauge we overwrite the last value.
 	mergedByID := make(map[string]model.Metric, len(metrics))
 	for _, metric := range metrics {
-		if err := validateMetricType(metric.MType); err != nil {
+		if err := validateMetricType(string(metric.MType)); err != nil {
 			return err
 		}
 

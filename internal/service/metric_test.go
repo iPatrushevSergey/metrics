@@ -101,7 +101,7 @@ func TestMetricServiceUpdate(t *testing.T) {
 		{
 			name:         "create Gauge",
 			initialState: map[string]model.Metric{},
-			metricType:   model.Gauge,
+			metricType:   string(model.Gauge),
 			metricName:   "gauge",
 			metricValue:  "10.3",
 			want: want{
@@ -114,7 +114,7 @@ func TestMetricServiceUpdate(t *testing.T) {
 			initialState: map[string]model.Metric{
 				"existing_gauge": {ID: "existing_gauge", MType: model.Gauge, Value: floatp(9.1)},
 			},
-			metricType:  model.Gauge,
+			metricType:  string(model.Gauge),
 			metricName:  "existing_gauge",
 			metricValue: "2.1",
 			want: want{
@@ -125,7 +125,7 @@ func TestMetricServiceUpdate(t *testing.T) {
 		{
 			name:         "create Counter",
 			initialState: map[string]model.Metric{},
-			metricType:   model.Counter,
+			metricType:   string(model.Counter),
 			metricName:   "new_counter",
 			metricValue:  "10",
 			want: want{
@@ -138,7 +138,7 @@ func TestMetricServiceUpdate(t *testing.T) {
 			initialState: map[string]model.Metric{
 				"existing_counter": {ID: "existing_counter", MType: model.Counter, Delta: intp(10)},
 			},
-			metricType:  model.Counter,
+			metricType:  string(model.Counter),
 			metricName:  "existing_counter",
 			metricValue: "10",
 			want: want{
@@ -215,7 +215,7 @@ func TestMetricServiceUpdateJSON(t *testing.T) {
 		v := 1.5
 		err := svc.UpdateJSON(ctx, model.Metric{ID: "g1", MType: model.Gauge, Value: &v})
 		require.NoError(t, err)
-		val, err := svc.GetValue(ctx, model.Gauge, "g1")
+		val, err := svc.GetValue(ctx, string(model.Gauge), "g1")
 		require.NoError(t, err)
 		assert.Equal(t, "1.5", val)
 	})
@@ -223,7 +223,7 @@ func TestMetricServiceUpdateJSON(t *testing.T) {
 		v := 2.5
 		err := svc.UpdateJSON(ctx, model.Metric{ID: "g1", MType: model.Gauge, Value: &v})
 		require.NoError(t, err)
-		val, err := svc.GetValue(ctx, model.Gauge, "g1")
+		val, err := svc.GetValue(ctx, string(model.Gauge), "g1")
 		require.NoError(t, err)
 		assert.Equal(t, "2.5", val)
 	})
@@ -233,7 +233,7 @@ func TestMetricServiceUpdateJSON(t *testing.T) {
 		require.NoError(t, err)
 		err = svc.UpdateJSON(ctx, model.Metric{ID: "c1", MType: model.Counter, Delta: &d})
 		require.NoError(t, err)
-		val, err := svc.GetValue(ctx, model.Counter, "c1")
+		val, err := svc.GetValue(ctx, string(model.Counter), "c1")
 		require.NoError(t, err)
 		assert.Equal(t, "2", val)
 	})
@@ -271,7 +271,7 @@ func TestMetricServiceUpdatesJSON_mergeDuplicates(t *testing.T) {
 	}
 	err := svc.UpdatesJSON(ctx, metrics)
 	require.NoError(t, err)
-	val, err := svc.GetValue(ctx, model.Counter, "c1")
+	val, err := svc.GetValue(ctx, string(model.Counter), "c1")
 	require.NoError(t, err)
 	assert.Equal(t, "8", val)
 }
@@ -299,7 +299,7 @@ func BenchmarkMetricsService_GetValue(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = svc.GetValue(ctx, model.Gauge, "gauge_0")
+		_, _ = svc.GetValue(ctx, string(model.Gauge), "gauge_0")
 	}
 }
 
@@ -323,7 +323,7 @@ func BenchmarkMetricsService_Update(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = svc.Update(ctx, model.Gauge, "gauge_0", "123.45")
+		_ = svc.Update(ctx, string(model.Gauge), "gauge_0", "123.45")
 	}
 }
 

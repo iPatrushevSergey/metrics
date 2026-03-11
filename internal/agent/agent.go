@@ -251,7 +251,7 @@ func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mVal
 	metricDTO := handler.MetricDTO{ID: mName, MType: mType}
 
 	// Type definition
-	switch mType {
+	switch model.MetricType(mType) {
 	case model.Counter:
 		val, ok := mValue.(int64)
 		if !ok {
@@ -344,7 +344,7 @@ func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 		val := value
 		metrics = append(metrics, handler.MetricDTO{
 			ID:    name,
-			MType: model.Gauge,
+			MType: string(model.Gauge),
 			Value: &val,
 		})
 	}
@@ -353,7 +353,7 @@ func (a *Agent) sendAllMetricsBatch(ctx context.Context) error {
 		val := value
 		metrics = append(metrics, handler.MetricDTO{
 			ID:    name,
-			MType: model.Counter,
+			MType: string(model.Counter),
 			Delta: &val,
 		})
 	}
