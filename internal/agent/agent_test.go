@@ -110,7 +110,7 @@ func TestSendMetric(t *testing.T) {
 	tests := []test{
 		{
 			name:          "Success Gauge 200",
-			metricType:    model.Gauge,
+			metricType:    string(model.Gauge),
 			metricName:    "Alloc",
 			metricValue:   100.1,
 			wantCode:      http.StatusOK,
@@ -119,7 +119,7 @@ func TestSendMetric(t *testing.T) {
 		},
 		{
 			name:          "Success Counter 200",
-			metricType:    model.Counter,
+			metricType:    string(model.Counter),
 			metricName:    "PollCount",
 			metricValue:   int64(13),
 			wantCode:      http.StatusOK,
@@ -128,7 +128,7 @@ func TestSendMetric(t *testing.T) {
 		},
 		{
 			name:          "Fail Gauge 404 NotFound",
-			metricType:    model.Gauge,
+			metricType:    string(model.Gauge),
 			metricName:    "UnknownMetric",
 			metricValue:   1.0,
 			wantCode:      http.StatusNotFound,
@@ -137,7 +137,7 @@ func TestSendMetric(t *testing.T) {
 		},
 		{
 			name:          "Fail Internal Type Mismatch",
-			metricType:    model.Counter,
+			metricType:    string(model.Counter),
 			metricName:    "PollCount",
 			metricValue:   "invalid_value",
 			wantCode:      0,

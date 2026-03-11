@@ -2,12 +2,15 @@ package handler
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iPatrushevSergey/metrics/internal/audit"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
 	"github.com/iPatrushevSergey/metrics/internal/repository/inmemory"
@@ -79,7 +82,7 @@ func TestMetricHandlerUpdate(t *testing.T) {
 			repo := inmemory.NewMemStorageMetricRepository()
 			metricService := service.NewMetricService(repo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.POST("/update/:type/:name/:value", metricHandler.Update)
@@ -158,7 +161,7 @@ func TestMetricHandlerGetValue(t *testing.T) {
 
 			metricService := service.NewMetricService(typedRepo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.GET("/value/:type/:name", metricHandler.GetValue)
@@ -234,7 +237,7 @@ func TestMetricHandlerGetJSON(t *testing.T) {
 
 			metricService := service.NewMetricService(typedRepo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.POST("/value", metricHandler.GetJSON)
@@ -325,7 +328,7 @@ func TestMetricHandlerGetAll(t *testing.T) {
 
 			metricService := service.NewMetricService(typedRepo)
 			testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
-			metricHandler := NewMetricHandler(metricService, testLogger)
+			metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
 
 			router := gin.New()
 			router.GET("/", metricHandler.GetAll)
@@ -353,5 +356,147 @@ func TestMetricHandlerGetAll(t *testing.T) {
 				assert.NotContains(t, body, str)
 			}
 		})
+	}
+}
+
+func TestMetricHandlerPingDB(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := inmemory.NewMemStorageMetricRepository()
+	metricService := service.NewMetricService(repo)
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
+	router := gin.New()
+	router.GET("/ping", metricHandler.PingDB)
+
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+// handlerBenchHelper creates router and handler with in-memory repo, заполненным данными из repoState через интерфейс.
+func handlerBenchHelper(repoState map[string]model.Metric) (*gin.Engine, *MetricHandler) {
+	repo := inmemory.NewMemStorageMetricRepository()
+	ctx := context.Background()
+	for _, m := range repoState {
+		_ = repo.Create(ctx, m)
+	}
+	metricService := service.NewMetricService(repo)
+	testLogger := logger.NewZapLoggerAdapter(zap.NewNop())
+	metricHandler := NewMetricHandler(metricService, testLogger, audit.NewPublisher(testLogger))
+	router := gin.New()
+	router.GET("/", metricHandler.GetAll)
+	router.POST("/value/", metricHandler.GetJSON)
+	router.POST("/update/", metricHandler.UpdateJSON)
+	router.POST("/updates/", metricHandler.UpdatesJSON)
+	router.POST("/update/:type/:name/:value", metricHandler.Update)
+	router.GET("/value/:type/:name/", metricHandler.GetValue)
+	return router, metricHandler
+}
+
+const handlerBenchMetrics = 80
+
+func BenchmarkHandler_GetAll(b *testing.B) {
+	gin.SetMode(gin.TestMode)
+	state := make(map[string]model.Metric, handlerBenchMetrics*2)
+	for i := 0; i < handlerBenchMetrics; i++ {
+		name := fmt.Sprintf("g_%d", i)
+		v := float64(i)
+		state[name] = model.Metric{ID: name, MType: model.Gauge, Value: &v}
+	}
+	for i := 0; i < handlerBenchMetrics; i++ {
+		name := fmt.Sprintf("c_%d", i)
+		d := int64(i)
+		state[name] = model.Metric{ID: name, MType: model.Counter, Delta: &d}
+	}
+	router, _ := handlerBenchHelper(state)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkHandler_GetJSON(b *testing.B) {
+	gin.SetMode(gin.TestMode)
+	state := map[string]model.Metric{
+		"gauge":   {ID: "gauge", MType: model.Gauge, Value: floatp(1.5)},
+		"counter": {ID: "counter", MType: model.Counter, Delta: intp(10)},
+	}
+	router, _ := handlerBenchHelper(state)
+	body := []byte(`{"id":"gauge","type":"gauge"}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/value/", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkHandler_UpdateJSON(b *testing.B) {
+	gin.SetMode(gin.TestMode)
+	router, _ := handlerBenchHelper(map[string]model.Metric{})
+	body := []byte(`{"id":"cpu_usage","type":"gauge","value":99.9}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkHandler_UpdatesJSON(b *testing.B) {
+	gin.SetMode(gin.TestMode)
+	router, _ := handlerBenchHelper(map[string]model.Metric{})
+	var buf bytes.Buffer
+	buf.WriteString(`[`)
+	for i := 0; i < 25; i++ {
+		if i > 0 {
+			buf.WriteString(`,`)
+		}
+		fmt.Fprintf(&buf, `{"id":"m%d","type":"gauge","value":%d.1}`, i, i)
+	}
+	buf.WriteString(`]`)
+	body := buf.Bytes()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkHandler_GetValue(b *testing.B) {
+	gin.SetMode(gin.TestMode)
+	state := map[string]model.Metric{
+		"gauge": {ID: "gauge", MType: model.Gauge, Value: floatp(1.5)},
+	}
+	router, _ := handlerBenchHelper(state)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/value/gauge/gauge/", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkHandler_Update(b *testing.B) {
+	gin.SetMode(gin.TestMode)
+	router, _ := handlerBenchHelper(map[string]model.Metric{})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/update/gauge/bench_metric/123.45", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
 	}
 }

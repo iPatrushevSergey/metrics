@@ -69,8 +69,7 @@ func (a *Address) URL() string {
 	return fmt.Sprintf("%s://%s:%d", a.Schema, a.Host, a.Port)
 }
 
-// === Custom Flag Type ===
-
+// Duration is a custom flag type for time duration (seconds or duration string).
 type Duration struct {
 	time.Duration
 }
@@ -127,7 +126,7 @@ type agentInternalConfig struct {
 	LogLevel       string   `env:"LOG_LEVEL"`
 }
 
-// Environment variables take precedence over flags.
+// LoadAgentConfig loads agent configuration from flags and environment (env overrides flags).
 func LoadAgentConfig() (AgentConfig, error) {
 	cfg := agentInternalConfig{}
 
@@ -140,6 +139,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 	cfg.Key = ""
 	cfg.RateLimit = 0
 	cfg.LogLevel = "info"
+
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.Var(&cfg.ReportInterval, "r", "frequency of sending metrics (seconds or duration)")
 	fs.Var(&cfg.PollInterval, "p", "frequency of metrics polling (seconds or duration)")
@@ -173,14 +173,17 @@ func LoadAgentConfig() (AgentConfig, error) {
 
 // ServerConfig - the final configuration structure for the server.
 type ServerConfig struct {
-	Address         string
-	LogLevel        string
-	StoreInterval   time.Duration
-	FileStoragePath string
-	Restore         bool
-	DatabaseDSN     string
-	EnableRetry     bool   // Enable retry logic for PostgreSQL operations
-	Key             string // Key for hash calculation
+	Address          string
+	LogLevel         string
+	StoreInterval    time.Duration
+	FileStoragePath  string
+	Restore          bool
+	DatabaseDSN      string
+	EnableRetry      bool   // Enable retry logic for PostgreSQL operations
+	Key              string // Key for hash calculation
+	AuditFilePath    string
+	AuditURL         string
+	AuditHTTPTimeout time.Duration
 }
 
 func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -189,21 +192,27 @@ func (c *ServerConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddDuration("store_interval", c.StoreInterval)
 	enc.AddString("storage_path", c.FileStoragePath)
 	enc.AddBool("restore", c.Restore)
+	enc.AddString("audit_file_path", c.AuditFilePath)
+	enc.AddString("audit_url", c.AuditURL)
+	enc.AddDuration("audit_http_timeout", c.AuditHTTPTimeout)
 	return nil
 }
 
 type serverInternalConfig struct {
-	Address         Address  `env:"ADDRESS"`
-	LogLevel        string   `env:"LOG_LEVEL"`
-	StoreInterval   Duration `env:"STORE_INTERVAL"`
-	FileStoragePath string   `env:"FILE_STORAGE_PATH"`
-	Restore         bool     `env:"RESTORE"`
-	DatabaseDSN     string   `env:"DATABASE_DSN"`
-	EnableRetry     bool     `env:"ENABLE_RETRY"`
-	Key             string   `env:"KEY"`
+	Address          Address  `env:"ADDRESS"`
+	LogLevel         string   `env:"LOG_LEVEL"`
+	StoreInterval    Duration `env:"STORE_INTERVAL"`
+	FileStoragePath  string   `env:"FILE_STORAGE_PATH"`
+	Restore          bool     `env:"RESTORE"`
+	DatabaseDSN      string   `env:"DATABASE_DSN"`
+	EnableRetry      bool     `env:"ENABLE_RETRY"`
+	Key              string   `env:"KEY"`
+	AuditFilePath    string   `env:"AUDIT_FILE"`
+	AuditURL         string   `env:"AUDIT_URL"`
+	AuditHTTPTimeout Duration `env:"AUDIT_HTTP_TIMEOUT"`
 }
 
-// Environment variables take precedence over flags.
+// LoadServerConfig loads server configuration from flags and environment (env overrides flags).
 func LoadServerConfig() (ServerConfig, error) {
 	cfg := serverInternalConfig{}
 
@@ -214,6 +223,7 @@ func LoadServerConfig() (ServerConfig, error) {
 	cfg.StoreInterval = Duration{Duration: 300 * time.Second}
 	cfg.EnableRetry = true
 	cfg.Key = ""
+	cfg.AuditHTTPTimeout = Duration{Duration: 2 * time.Second}
 	fs.Var(&cfg.Address, "a", "server address")
 	fs.StringVar(&cfg.LogLevel, "l", "info", "logging level")
 	fs.Var(&cfg.StoreInterval, "i", "server data save interval (seconds or duration)")
@@ -230,6 +240,9 @@ func LoadServerConfig() (ServerConfig, error) {
 		"database dsn, example: postgres://user:password@localhost:5432/db?sslmode=disable",
 	)
 	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
+	fs.StringVar(&cfg.AuditFilePath, "audit-file", "", "the path to the file where the audit logs are saved")
+	fs.StringVar(&cfg.AuditURL, "audit-url", "", "the full URL where the audit logs are sent")
+	fs.Var(&cfg.AuditHTTPTimeout, "audit-http-timeout", "audit HTTP timeout (seconds or duration)")
 
 	// Flags
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -242,14 +255,17 @@ func LoadServerConfig() (ServerConfig, error) {
 	}
 
 	finalCfg := ServerConfig{
-		Address:         cfg.Address.String(),
-		LogLevel:        cfg.LogLevel,
-		StoreInterval:   cfg.StoreInterval.Duration,
-		FileStoragePath: cfg.FileStoragePath,
-		Restore:         cfg.Restore,
-		DatabaseDSN:     cfg.DatabaseDSN,
-		EnableRetry:     cfg.EnableRetry,
-		Key:             cfg.Key,
+		Address:          cfg.Address.String(),
+		LogLevel:         cfg.LogLevel,
+		StoreInterval:    cfg.StoreInterval.Duration,
+		FileStoragePath:  cfg.FileStoragePath,
+		Restore:          cfg.Restore,
+		DatabaseDSN:      cfg.DatabaseDSN,
+		EnableRetry:      cfg.EnableRetry,
+		Key:              cfg.Key,
+		AuditFilePath:    cfg.AuditFilePath,
+		AuditURL:         cfg.AuditURL,
+		AuditHTTPTimeout: cfg.AuditHTTPTimeout.Duration,
 	}
 
 	return finalCfg, nil

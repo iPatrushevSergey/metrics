@@ -1,16 +1,17 @@
 package model
 
+// MetricType is the type of metric (gauge or counter).
+type MetricType string
+
 const (
-	Counter = "counter"
-	Gauge   = "gauge"
+	Counter MetricType = "counter"
+	Gauge   MetricType = "gauge"
 )
 
-// Delta и Value объявлены через указатели,
-// что бы отличать значение "0", от не заданного значения
-// и соответственно не кодировать в структуру.
+// Metric is a single metric.
 type Metric struct {
 	ID    string
-	MType string
+	MType MetricType
 	Delta *int64
 	Value *float64
 	Hash  string

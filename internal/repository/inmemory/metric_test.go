@@ -152,4 +152,126 @@ func TestMemStorageMetricRepository(t *testing.T) {
 		}
 		wg.Wait()
 	})
+
+	t.Run("GetByIDs", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		v := 1.5
+		d := int64(10)
+		_ = repo.Create(ctx, model.Metric{ID: "a", MType: model.Gauge, Value: &v})
+		_ = repo.Create(ctx, model.Metric{ID: "b", MType: model.Counter, Delta: &d})
+		byIDs, err := repo.GetByIDs(ctx, []string{"a", "b", "missing"})
+		require.NoError(t, err)
+		assert.Len(t, byIDs, 2)
+		assert.Contains(t, byIDs, "a")
+		assert.Contains(t, byIDs, "b")
+	})
+
+	t.Run("CreateBatch", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		v1, v2 := 1.0, 2.0
+		batch := []model.Metric{
+			{ID: "g1", MType: model.Gauge, Value: &v1},
+			{ID: "g2", MType: model.Gauge, Value: &v2},
+		}
+		err := repo.CreateBatch(ctx, batch)
+		require.NoError(t, err)
+		all, _ := repo.GetAll(ctx)
+		assert.Len(t, all, 2)
+	})
+
+	t.Run("UpdateBatch", func(t *testing.T) {
+		repo := NewMemStorageMetricRepository()
+		v := 1.0
+		_ = repo.Create(ctx, model.Metric{ID: "g1", MType: model.Gauge, Value: &v})
+		v2 := 2.0
+		err := repo.UpdateBatch(ctx, []model.Metric{{ID: "g1", MType: model.Gauge, Value: &v2}})
+		require.NoError(t, err)
+		m, _ := repo.GetByID(ctx, "g1")
+		assert.Equal(t, 2.0, *m.Value)
+	})
+}
+
+const benchmarkMetricsPerType = 100
+
+// fillRepoForBench fills the repository with the initial data for the benchmark.
+func fillRepoForBench(ctx context.Context, repo repository.MetricRepository, n int) {
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("gauge_%d", i)
+		v := float64(i)
+		_ = repo.Create(ctx, model.Metric{ID: name, MType: model.Gauge, Value: &v})
+	}
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("counter_%d", i)
+		d := int64(i)
+		_ = repo.Create(ctx, model.Metric{ID: name, MType: model.Counter, Delta: &d})
+	}
+}
+
+func BenchmarkMemStorage_GetByID(b *testing.B) {
+	ctx := context.Background()
+	repo := NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, benchmarkMetricsPerType)
+	targetID := "gauge_0"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = repo.GetByID(ctx, targetID)
+	}
+}
+
+func BenchmarkMemStorage_GetAll(b *testing.B) {
+	ctx := context.Background()
+	repo := NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, benchmarkMetricsPerType)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = repo.GetAll(ctx)
+	}
+}
+
+func BenchmarkMemStorage_Update(b *testing.B) {
+	ctx := context.Background()
+	repo := NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, benchmarkMetricsPerType)
+	v := 99.9
+	m := model.Metric{ID: "gauge_0", MType: model.Gauge, Value: &v}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = repo.Update(ctx, "gauge_0", m)
+	}
+}
+
+func BenchmarkMemStorage_CreateBatch(b *testing.B) {
+	ctx := context.Background()
+	metrics := make([]model.Metric, 0, 50)
+	for i := 0; i < 50; i++ {
+		name := fmt.Sprintf("batch_g_%d", i)
+		v := float64(i)
+		metrics = append(metrics, model.Metric{ID: name, MType: model.Gauge, Value: &v})
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		repo := NewMemStorageMetricRepository()
+		_ = repo.CreateBatch(ctx, metrics)
+	}
+}
+
+func BenchmarkMemStorage_UpdateBatch(b *testing.B) {
+	ctx := context.Background()
+	repo := NewMemStorageMetricRepository()
+	fillRepoForBench(ctx, repo, 25)
+	metrics := make([]model.Metric, 0, 25)
+	for i := 0; i < 25; i++ {
+		name := fmt.Sprintf("gauge_%d", i)
+		v := float64(i + 100)
+		metrics = append(metrics, model.Metric{ID: name, MType: model.Gauge, Value: &v})
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = repo.UpdateBatch(ctx, metrics)
+	}
 }

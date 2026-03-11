@@ -5,6 +5,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/iPatrushevSergey/metrics/internal/audit"
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
@@ -23,7 +24,29 @@ func InitializeApp(cfg config.ServerConfig, loggerAdapter logger.Logger) (*App, 
 
 	// Create service and handler
 	metricService := service.NewMetricService(repoConfig.Repository)
-	metricHandler := handler.NewMetricHandler(metricService, loggerAdapter)
+
+	var observers []audit.Observer
+
+	if cfg.AuditFilePath != "" {
+		fo, err := audit.NewFileObserver(cfg.AuditFilePath)
+		if err != nil {
+			return nil, err
+		}
+		observers = append(observers, fo)
+	}
+	if cfg.AuditURL != "" {
+		ho, err := audit.NewHTTPObserver(cfg.AuditURL, &http.Client{
+			Timeout: cfg.AuditHTTPTimeout,
+		})
+		if err != nil {
+			return nil, err
+		}
+		observers = append(observers, ho)
+	}
+
+	auditPublisher := audit.NewPublisher(loggerAdapter, observers...)
+
+	metricHandler := handler.NewMetricHandler(metricService, loggerAdapter, auditPublisher)
 
 	// Setup router
 	router := SetupRouter(metricHandler, cfg, loggerAdapter)
@@ -35,11 +58,13 @@ func InitializeApp(cfg config.ServerConfig, loggerAdapter logger.Logger) (*App, 
 	}
 
 	return &App{
-		Server:        server,
-		DB:            repoConfig.DB,
-		Repository:    repoConfig.Repository,
-		FileStorage:   repoConfig.FileStorage,
-		PeriodicSaver: repoConfig.PeriodicSaver,
+		Server:         server,
+		DB:             repoConfig.DB,
+		Repository:     repoConfig.Repository,
+		FileStorage:    repoConfig.FileStorage,
+		PeriodicSaver:  repoConfig.PeriodicSaver,
+		AuditPublisher: auditPublisher,
+		AuditObservers: observers,
 	}, nil
 }
 

@@ -1,8 +1,8 @@
 package bootstrap
 
 import (
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-
 	gojson "github.com/goccy/go-json"
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
@@ -10,12 +10,15 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/middleware"
 )
 
+// GinJSONSerializer implements JSON marshal/unmarshal for the router.
 type GinJSONSerializer struct{}
 
+// Serialize marshals data to JSON bytes.
 func (g *GinJSONSerializer) Serialize(c *gin.Context, data interface{}) ([]byte, error) {
 	return gojson.Marshal(data)
 }
 
+// Deserialize unmarshals JSON bytes into v.
 func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface{}) error {
 	return gojson.Unmarshal(data, v)
 }
@@ -31,6 +34,8 @@ func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig, 
 		c.Set("json.Serializer", &GinJSONSerializer{})
 		c.Next()
 	})
+
+	pprof.Register(router)
 
 	router.GET("/ping", metricHandler.PingDB)
 	router.GET("/", metricHandler.GetAll)

@@ -26,6 +26,7 @@ func (r responseBodyWriter) WriteString(s string) (int, error) {
 	return r.ResponseWriter.WriteString(s)
 }
 
+// LoggerMiddleware logs each request at Debug level.
 func LoggerMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		start := time.Now()
@@ -44,7 +45,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 
 		duration := time.Since(start)
 
-		logger.Log.Info(
+		logger.Log.Debug(
 			"HTTP Request processed",
 			zap.String("URI", ctx.Request.RequestURI),
 			zap.String("method", ctx.Request.Method),

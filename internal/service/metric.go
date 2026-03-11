@@ -22,7 +22,7 @@ var (
 )
 
 func validateMetricType(mType string) error {
-	switch mType {
+	switch model.MetricType(mType) {
 	case model.Gauge, model.Counter:
 		return nil
 	default:
@@ -52,16 +52,19 @@ func formatMetricToStr(metric model.Metric) (string, error) {
 	}
 }
 
+// MetricsService provides metric read/update operations using a MetricRepository.
 type MetricsService struct {
 	metricRepo repository.MetricRepository
 }
 
+// NewMetricService returns a new MetricsService backed by the given repository.
 func NewMetricService(
 	repo repository.MetricRepository,
 ) *MetricsService {
 	return &MetricsService{metricRepo: repo}
 }
 
+// GetValue returns the metric value as a string by type and name.
 func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (string, error) {
 	if err := validateMetricType(mType); err != nil {
 		return "", err
@@ -75,7 +78,7 @@ func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (str
 		return "", err
 	}
 
-	if metric.MType != mType {
+	if metric.MType != model.MetricType(mType) {
 		return "", ErrNotFound
 	}
 
@@ -87,7 +90,7 @@ func (s *MetricsService) GetValue(ctx context.Context, mType, mName string) (str
 	return formattedMetric, nil
 }
 
-// GetMetric returns a metric by type and name
+// GetMetric returns a metric by type and name.
 func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (model.Metric, error) {
 	if err := validateMetricType(mType); err != nil {
 		return model.Metric{}, err
@@ -101,7 +104,7 @@ func (s *MetricsService) GetMetric(ctx context.Context, mType, mName string) (mo
 		return model.Metric{}, err
 	}
 
-	if metric.MType != mType {
+	if metric.MType != model.MetricType(mType) {
 		return model.Metric{}, ErrNotFound
 	}
 
@@ -133,10 +136,10 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 
 	metric := model.Metric{
 		ID:    mName,
-		MType: mType,
+		MType: model.MetricType(mType),
 	}
 
-	switch mType {
+	switch model.MetricType(mType) {
 	case model.Gauge:
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
@@ -163,7 +166,7 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 		return nil
 	}
 
-	switch mType {
+	switch model.MetricType(mType) {
 	case model.Counter:
 		if metric.Delta != nil {
 			if existing.Delta != nil {
@@ -185,7 +188,7 @@ func (s *MetricsService) Update(ctx context.Context, mType, mName string, value 
 
 // UpdateJSON updates or creates a metric from the domain model
 func (s *MetricsService) UpdateJSON(ctx context.Context, metric model.Metric) error {
-	if err := validateMetricType(metric.MType); err != nil {
+	if err := validateMetricType(string(metric.MType)); err != nil {
 		return err
 	}
 
@@ -238,7 +241,7 @@ func (s *MetricsService) UpdatesJSON(ctx context.Context, metrics []model.Metric
 	// for gauge we overwrite the last value.
 	mergedByID := make(map[string]model.Metric, len(metrics))
 	for _, metric := range metrics {
-		if err := validateMetricType(metric.MType); err != nil {
+		if err := validateMetricType(string(metric.MType)); err != nil {
 			return err
 		}
 
