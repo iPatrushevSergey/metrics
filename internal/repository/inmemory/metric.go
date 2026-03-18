@@ -1,3 +1,4 @@
+// Package inmemory provides an in-memory implementation of the metric repository.
 package inmemory
 
 import (

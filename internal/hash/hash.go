@@ -1,3 +1,4 @@
+// Package hash provides SHA256 signing and verification for request bodies.
 package hash
 
 import (

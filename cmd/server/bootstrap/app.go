@@ -1,3 +1,4 @@
+// Package bootstrap provides server wiring and lifecycle: router, repository, file storage, audit.
 package bootstrap
 
 import (

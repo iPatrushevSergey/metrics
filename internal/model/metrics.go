@@ -1,3 +1,4 @@
+// Package model defines domain types for metrics (gauge, counter).
 package model
 
 // MetricType is the type of metric (gauge or counter).

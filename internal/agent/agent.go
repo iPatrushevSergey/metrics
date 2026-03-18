@@ -1,3 +1,4 @@
+// Package agent collects runtime and custom metrics and sends them to the metrics server.
 package agent
 
 import (

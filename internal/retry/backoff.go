@@ -1,3 +1,4 @@
+// Package retry provides configurable retry and backoff for transient failures.
 package retry
 
 import (

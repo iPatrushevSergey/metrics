@@ -1,3 +1,4 @@
+// Package postgres provides a PostgreSQL implementation of the metric repository.
 package postgres
 
 import (

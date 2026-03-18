@@ -1,3 +1,4 @@
+// Package logger provides a shared zap logger and initialization by level.
 package logger
 
 import (

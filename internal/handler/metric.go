@@ -1,3 +1,4 @@
+// Package handler provides HTTP handlers for the metrics server API.
 package handler
 
 import (
