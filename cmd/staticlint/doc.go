@@ -1,0 +1,20 @@
+// Package main provides the staticlint multichecker binary.
+//
+// The binary is built from cmd/staticlint and runs a combined set of analyzers:
+//   - standard analyzers from golang.org/x/tools/go/analysis/passes;
+//   - all SA analyzers from staticcheck (honnef.co/go/tools/staticcheck);
+//   - at least one analyzer from other staticcheck classes (S and ST);
+//   - custom analyzer exitcheck.
+//
+// exitcheck reports direct os.Exit calls inside func main in package main.
+// It is intentionally strict only for the exact direct call form `os.Exit(...)`.
+//
+// Run:
+//
+//	go run ./cmd/staticlint ./...
+//
+// or build once and run:
+//
+//	go build -o staticlint ./cmd/staticlint
+//	./staticlint ./...
+package main
