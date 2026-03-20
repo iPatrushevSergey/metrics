@@ -88,9 +88,6 @@ func Run(cfg config.ServerConfig) error {
 		defer app.DB.Close()
 	}
 
-	if err := StartServer(app.Server, loggerAdapter); err != nil {
-		return err
-	}
-
-	return WaitForShutdown(app, cfg, loggerAdapter)
+	serverErrCh := StartServer(app.Server, loggerAdapter)
+	return WaitForShutdown(app, cfg, loggerAdapter, serverErrCh)
 }
