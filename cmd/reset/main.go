@@ -298,9 +298,7 @@ func resetPointerToStruct(expr string, st *types.Struct, named *types.Named) ([]
 		return nil, err
 	}
 	out := []string{fmt.Sprintf("if %s != nil {", expr)}
-	for _, l := range inner {
-		out = append(out, l)
-	}
+	out = append(out, inner...)
 	out = append(out, "}")
 	return out, nil
 }
