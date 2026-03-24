@@ -10,6 +10,8 @@ const (
 )
 
 // Metric is a single metric.
+//
+// generate:reset
 type Metric struct {
 	ID    string
 	MType MetricType
