@@ -8,6 +8,8 @@ import (
 )
 
 func main() {
+	printBuildInfo()
+
 	// Loading the config
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
