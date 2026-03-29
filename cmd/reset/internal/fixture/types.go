@@ -1,3 +1,4 @@
+// Package fixture holds sample types for cmd/reset generator tests.
 package fixture
 
 // MyString is a type alias to string.
