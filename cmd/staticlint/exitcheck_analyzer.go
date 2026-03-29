@@ -2,6 +2,7 @@ package main
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 	"path/filepath"
 	"strings"
@@ -9,46 +10,74 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// ExitCheckAnalyzer reports direct os.Exit calls inside func main in package main.
+// ExitCheckAnalyzer reports os.Exit and log.Fatal / Fatalf / Fatalln everywhere
+// except inside func main of package main (the program entrypoint).
+// Other packages and all other functions in package main are checked.
 var ExitCheckAnalyzer = &analysis.Analyzer{
 	Name: "exitcheck",
-	Doc:  "forbid direct os.Exit calls in package main func main",
+	Doc:  "forbid os.Exit and log.Fatal* except inside func main of package main",
 	Run:  runExitCheck,
 }
 
-func runExitCheck(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "main" {
-		return nil, nil
-	}
+const msgForbidden = "forbidden: os.Exit or log.Fatal outside func main of package main"
 
+func runExitCheck(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		for _, decl := range file.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Name == nil || fn.Name.Name != "main" || fn.Body == nil {
-				continue
-			}
-
-			ast.Inspect(fn.Body, func(node ast.Node) bool {
-				call, ok := node.(*ast.CallExpr)
-				if !ok {
-					return true
+			switch d := decl.(type) {
+			case *ast.FuncDecl:
+				if d.Name == nil || d.Body == nil {
+					continue
 				}
-				if isDirectOSExitCall(pass, call) {
-					fileName := filepath.ToSlash(pass.Fset.Position(call.Pos()).Filename)
-					if strings.Contains(fileName, "/go-build/") {
-						return true
+				if pass.Pkg.Name() == "main" && d.Recv == nil && d.Name.Name == "main" {
+					continue
+				}
+				inspectForbidden(pass, d.Body)
+			case *ast.GenDecl:
+				if d.Tok != token.VAR {
+					continue
+				}
+				for _, spec := range d.Specs {
+					vs, ok := spec.(*ast.ValueSpec)
+					if !ok {
+						continue
 					}
-					pass.Reportf(call.Pos(), "direct os.Exit call in main is forbidden")
+					for _, val := range vs.Values {
+						inspectForbidden(pass, val)
+					}
 				}
-				return true
-			})
+			}
 		}
 	}
 
 	return nil, nil
 }
 
-func isDirectOSExitCall(pass *analysis.Pass, call *ast.CallExpr) bool {
+func inspectForbidden(pass *analysis.Pass, root ast.Node) {
+	if root == nil {
+		return
+	}
+	ast.Inspect(root, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if skipGoBuild(pass, call.Pos()) {
+			return true
+		}
+		if isOSExitCall(pass, call) || isLogFatalCall(pass, call) {
+			pass.Reportf(call.Pos(), "%s", msgForbidden)
+		}
+		return true
+	})
+}
+
+func skipGoBuild(pass *analysis.Pass, pos token.Pos) bool {
+	fileName := filepath.ToSlash(pass.Fset.Position(pos).Filename)
+	return strings.Contains(fileName, "/go-build/")
+}
+
+func isOSExitCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok || sel.Sel == nil || sel.Sel.Name != "Exit" {
 		return false
@@ -66,4 +95,29 @@ func isDirectOSExitCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 	}
 
 	return pkgName.Imported().Path() == "os"
+}
+
+func isLogFatalCall(pass *analysis.Pass, call *ast.CallExpr) bool {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok || sel.Sel == nil {
+		return false
+	}
+	switch sel.Sel.Name {
+	case "Fatal", "Fatalf", "Fatalln":
+	default:
+		return false
+	}
+
+	pkgIdent, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return false
+	}
+
+	obj := pass.TypesInfo.Uses[pkgIdent]
+	pkgName, ok := obj.(*types.PkgName)
+	if !ok || pkgName.Imported() == nil {
+		return false
+	}
+
+	return pkgName.Imported().Path() == "log"
 }
