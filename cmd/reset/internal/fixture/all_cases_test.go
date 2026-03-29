@@ -62,7 +62,7 @@ func TestAllCases_Reset(t *testing.T) {
 
 	require.NotNil(t, v.IDsByOrder)
 	require.Empty(t, v.IDsByOrder)
-	require.Greater(t, cap(v.IDsByOrder), 0)
+	require.Positive(t, cap(v.IDsByOrder))
 
 	require.NotNil(t, v.ScoreByKey)
 	require.Empty(t, v.ScoreByKey)
