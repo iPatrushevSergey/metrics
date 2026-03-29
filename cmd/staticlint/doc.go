@@ -8,7 +8,7 @@
 //
 // exitcheck walks the whole module. It reports calls to os.Exit or
 // log.Fatal / Fatalf / Fatalln everywhere except inside func main of
-// package main (the only place such calls are allowed).
+// package main, and reports the built-in panic everywhere with no exceptions.
 //
 // Run:
 //
