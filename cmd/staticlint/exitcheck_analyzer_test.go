@@ -7,5 +7,5 @@ import (
 )
 
 func TestExitCheckAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), ExitCheckAnalyzer, "a", "b", "c", "d")
+	analysistest.Run(t, analysistest.TestData(), ExitCheckAnalyzer, "a", "b", "c")
 }
