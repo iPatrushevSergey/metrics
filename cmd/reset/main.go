@@ -234,7 +234,7 @@ func resetExpr(expr string, typ types.Type) ([]string, error) {
 func resetStructValue(expr string, st *types.Struct, named *types.Named) ([]string, error) {
 	// named is nil for anonymous struct literals only.
 	if named != nil && hasResetMethod(named) {
-		return []string{fmt.Sprintf("%s.Reset()", expr)}, nil
+		return []string{expr + ".Reset()"}, nil
 	}
 	var out []string
 	for i := 0; i < st.NumFields(); i++ {
