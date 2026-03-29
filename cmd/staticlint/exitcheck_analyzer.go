@@ -10,16 +10,19 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// ExitCheckAnalyzer reports os.Exit and log.Fatal / Fatalf / Fatalln everywhere
-// except inside func main of package main (the program entrypoint).
-// Other packages and all other functions in package main are checked.
+// ExitCheckAnalyzer reports:
+//   - os.Exit and log.Fatal / Fatalf / Fatalln everywhere except func main of package main;
+//   - the built-in panic everywhere, including func main (no exceptions).
 var ExitCheckAnalyzer = &analysis.Analyzer{
 	Name: "exitcheck",
-	Doc:  "forbid os.Exit and log.Fatal* except inside func main of package main",
+	Doc:  "forbid os.Exit and log.Fatal* except in func main of package main; forbid built-in panic everywhere",
 	Run:  runExitCheck,
 }
 
-const msgForbidden = "forbidden: os.Exit or log.Fatal outside func main of package main"
+const (
+	msgForbiddenExitFatal = "forbidden: os.Exit or log.Fatal outside func main of package main"
+	msgForbiddenPanic     = "forbidden: built-in panic"
+)
 
 func runExitCheck(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
@@ -29,10 +32,8 @@ func runExitCheck(pass *analysis.Pass) (interface{}, error) {
 				if d.Name == nil || d.Body == nil {
 					continue
 				}
-				if pass.Pkg.Name() == "main" && d.Recv == nil && d.Name.Name == "main" {
-					continue
-				}
-				inspectForbidden(pass, d.Body)
+				exemptExitFatal := pass.Pkg.Name() == "main" && d.Recv == nil && d.Name.Name == "main"
+				inspectCalls(pass, d.Body, !exemptExitFatal)
 			case *ast.GenDecl:
 				if d.Tok != token.VAR {
 					continue
@@ -43,7 +44,7 @@ func runExitCheck(pass *analysis.Pass) (interface{}, error) {
 						continue
 					}
 					for _, val := range vs.Values {
-						inspectForbidden(pass, val)
+						inspectCalls(pass, val, true)
 					}
 				}
 			}
@@ -53,7 +54,9 @@ func runExitCheck(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func inspectForbidden(pass *analysis.Pass, root ast.Node) {
+// inspectCalls checks call sites under root. If checkExitFatal is false, os.Exit and
+// log.Fatal* are skipped (only func main of package main passes false). panic is always checked.
+func inspectCalls(pass *analysis.Pass, root ast.Node, checkExitFatal bool) {
 	if root == nil {
 		return
 	}
@@ -65,8 +68,11 @@ func inspectForbidden(pass *analysis.Pass, root ast.Node) {
 		if skipGoBuild(pass, call.Pos()) {
 			return true
 		}
-		if isOSExitCall(pass, call) || isLogFatalCall(pass, call) {
-			pass.Reportf(call.Pos(), "%s", msgForbidden)
+		if isBuiltinPanic(pass, call) {
+			pass.Reportf(call.Pos(), "%s", msgForbiddenPanic)
+		}
+		if checkExitFatal && (isOSExitCall(pass, call) || isLogFatalCall(pass, call)) {
+			pass.Reportf(call.Pos(), "%s", msgForbiddenExitFatal)
 		}
 		return true
 	})
@@ -75,6 +81,19 @@ func inspectForbidden(pass *analysis.Pass, root ast.Node) {
 func skipGoBuild(pass *analysis.Pass, pos token.Pos) bool {
 	fileName := filepath.ToSlash(pass.Fset.Position(pos).Filename)
 	return strings.Contains(fileName, "/go-build/")
+}
+
+func isBuiltinPanic(pass *analysis.Pass, call *ast.CallExpr) bool {
+	id, ok := call.Fun.(*ast.Ident)
+	if !ok || id.Name != "panic" {
+		return false
+	}
+	obj, ok := pass.TypesInfo.Uses[id]
+	if !ok {
+		return false
+	}
+	b, ok := obj.(*types.Builtin)
+	return ok && b.Name() == "panic"
 }
 
 func isOSExitCall(pass *analysis.Pass, call *ast.CallExpr) bool {
