@@ -101,7 +101,7 @@ func TestSendMetric(t *testing.T) {
 		name          string
 		metricType    string
 		metricName    string
-		metricValue   interface{}
+		metricValue   any
 		wantCode      int
 		wantErrorBody string
 		wantError     bool

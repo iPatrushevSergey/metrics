@@ -46,5 +46,5 @@ type AllCases struct {
 	OptionalSession    *sessionState
 	OptionalPtrCount   **int
 
-	Payload interface{}
+	Payload any
 }

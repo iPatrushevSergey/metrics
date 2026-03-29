@@ -14,12 +14,12 @@ import (
 type GinJSONSerializer struct{}
 
 // Serialize marshals data to JSON bytes.
-func (g *GinJSONSerializer) Serialize(c *gin.Context, data interface{}) ([]byte, error) {
+func (g *GinJSONSerializer) Serialize(c *gin.Context, data any) ([]byte, error) {
 	return gojson.Marshal(data)
 }
 
 // Deserialize unmarshals JSON bytes into v.
-func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v interface{}) error {
+func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v any) error {
 	return gojson.Unmarshal(data, v)
 }
 

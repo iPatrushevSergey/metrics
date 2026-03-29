@@ -12,7 +12,7 @@
 //   - pointers: if non-nil, reset pointed value following the same rules;
 //   - struct values: call Reset() if defined on *T with signature func() (no args/results),
 //     otherwise reset fields recursively;
-//   - interface{} (empty): if value implements Reset(), call it via type assertion.
+//   - any (empty interface): if value implements Reset(), call it via type assertion.
 //
 // Whole packages may be skipped when their path (relative to -root) contains
 // certain segments (profiles, pkg, migrations, api) or a hidden directory

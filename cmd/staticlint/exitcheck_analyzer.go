@@ -24,7 +24,7 @@ const (
 	msgForbiddenPanic     = "forbidden: built-in panic"
 )
 
-func runExitCheck(pass *analysis.Pass) (interface{}, error) {
+func runExitCheck(pass *analysis.Pass) (any, error) {
 	for _, file := range pass.Files {
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {

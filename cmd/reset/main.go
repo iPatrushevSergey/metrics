@@ -304,7 +304,7 @@ func resetPointerToStruct(expr string, st *types.Struct, named *types.Named) ([]
 }
 
 func resetEmptyInterface(expr string) []string {
-	// interface{} only; calls Reset if implemented.
+	// any only; calls Reset if implemented.
 	return []string{
 		fmt.Sprintf("if resetter, ok := %s.(interface{ Reset() }); ok {", expr),
 		"\tresetter.Reset()",
