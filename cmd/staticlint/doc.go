@@ -6,8 +6,9 @@
 //   - at least one analyzer from other staticcheck classes (S and ST);
 //   - custom analyzer exitcheck.
 //
-// exitcheck reports direct os.Exit calls inside func main in package main.
-// It is intentionally strict only for the exact direct call form `os.Exit(...)`.
+// exitcheck walks the whole module. It reports calls to os.Exit or
+// log.Fatal / Fatalf / Fatalln everywhere except inside func main of
+// package main (the only place such calls are allowed).
 //
 // Run:
 //
