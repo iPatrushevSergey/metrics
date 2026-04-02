@@ -1,3 +1,4 @@
+// Package middleware provides Gin middleware: gzip, hash verification, request logging.
 package middleware
 
 import (

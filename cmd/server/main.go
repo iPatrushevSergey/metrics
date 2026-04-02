@@ -2,20 +2,25 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/iPatrushevSergey/metrics/cmd/server/bootstrap"
 	"github.com/iPatrushevSergey/metrics/internal/config"
 )
 
 func main() {
+	printBuildInfo()
+
 	// Loading the config
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
-		log.Fatalf("error load config: %v\n%v", cfg, err)
+		log.Printf("error load config: %v\n%v", cfg, err)
+		os.Exit(1)
 	}
 
 	// Initialize and run the application
 	if err := bootstrap.Run(cfg); err != nil {
-		log.Fatalf("error running application: %v", err)
+		log.Printf("error running application: %v", err)
+		os.Exit(1)
 	}
 }

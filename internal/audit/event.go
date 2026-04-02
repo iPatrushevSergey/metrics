@@ -1,3 +1,4 @@
+// Package audit provides event publishing and observers for metrics updates (file, HTTP).
 package audit
 
 //go:generate easyjson -all $GOFILE

@@ -16,6 +16,8 @@ import (
 )
 
 func main() {
+	printBuildInfo()
+
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
 		log.Fatalf("error load config: %v", err)

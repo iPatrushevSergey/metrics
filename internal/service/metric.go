@@ -1,3 +1,4 @@
+// Package service implements metric business logic using the repository.
 package service
 
 import (

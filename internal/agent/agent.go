@@ -1,3 +1,4 @@
+// Package agent collects runtime and custom metrics and sends them to the metrics server.
 package agent
 
 import (
@@ -246,7 +247,7 @@ func (a *Agent) batchWorker(ctx context.Context, id int, batchJobs <-chan []hand
 }
 
 // sendMetricRequest sends a metric to the endpoint /update
-func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mValue interface{}, workerID ...int) error {
+func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mValue any, workerID ...int) error {
 	url := fmt.Sprintf("%s/update", a.config.Address)
 	metricDTO := handler.MetricDTO{ID: mName, MType: mType}
 

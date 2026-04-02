@@ -77,3 +77,33 @@ func TestAgentConfig_MarshalLogObject(t *testing.T) {
 	err := c.MarshalLogObject(zapcore.NewMapObjectEncoder())
 	require.NoError(t, err)
 }
+
+func TestServerConfig_MarshalLogObject(t *testing.T) {
+	c := ServerConfig{
+		Address:          "h:8080",
+		LogLevel:         "debug",
+		StoreInterval:    time.Minute,
+		FileStoragePath:  "/tmp/m.json",
+		Restore:          true,
+		DatabaseDSN:      "postgres://x",
+		EnableRetry:      false,
+		Key:              "k",
+		AuditFilePath:    "/audit.log",
+		AuditURL:         "http://a/audit",
+		AuditHTTPTimeout: 3 * time.Second,
+	}
+	err := c.MarshalLogObject(zapcore.NewMapObjectEncoder())
+	require.NoError(t, err)
+}
+
+func TestAddress_Set_emptyHost(t *testing.T) {
+	var a Address
+	err := a.Set("http:///")
+	require.Error(t, err)
+}
+
+func TestDuration_Set_invalid(t *testing.T) {
+	var d Duration
+	err := d.Set("not-a-valid-duration")
+	require.Error(t, err)
+}

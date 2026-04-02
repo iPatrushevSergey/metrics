@@ -1,3 +1,4 @@
+// Package filestorage persists metrics to a JSON file and supports periodic save and restore.
 package filestorage
 
 import (

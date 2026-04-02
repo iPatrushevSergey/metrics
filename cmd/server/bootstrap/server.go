@@ -19,22 +19,35 @@ import (
 const serverShutdownTimeout = 5 * time.Second
 
 // StartServer starts the HTTP server in a goroutine
-func StartServer(server *http.Server, loggerInstance logger.Logger) error {
+func StartServer(server *http.Server, loggerInstance logger.Logger) <-chan error {
+	errCh := make(chan error, 1)
 	go func() {
+		defer close(errCh)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			loggerInstance.Error("Server failed to start", zap.Error(err))
-			os.Exit(1)
+			errCh <- err
 		}
 	}()
-	return nil
+	return errCh
 }
 
 // WaitForShutdown waits for shutdown signal and performs graceful shutdown
-func WaitForShutdown(app *App, cfg config.ServerConfig, loggerInstance logger.Logger) error {
+func WaitForShutdown(app *App, cfg config.ServerConfig, loggerInstance logger.Logger, serverErrCh <-chan error) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	loggerInstance.Debug("The completion signal has been received, starting the stop...")
+	for {
+		select {
+		case <-quit:
+			loggerInstance.Debug("The completion signal has been received, starting the stop...")
+		case err, ok := <-serverErrCh:
+			if !ok {
+				serverErrCh = nil
+				continue
+			}
+			return err
+		}
+		break
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	defer cancel()

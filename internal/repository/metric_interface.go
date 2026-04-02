@@ -1,3 +1,4 @@
+// Package repository defines the metric storage interface and optional decorators.
 package repository
 
 import (

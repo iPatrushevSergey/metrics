@@ -1,3 +1,4 @@
+// Package config provides application configuration (flags, environment, server and agent settings).
 package config
 
 import (
