@@ -77,7 +77,6 @@ openssl rsa -in rsa_private.pem -pubout -out rsa_public.pem
 | `rsa_private.pem` | сервер | `-crypto-key=./rsa_private.pem` или `CRYPTO_KEY` |
 | `rsa_public.pem` | агент | `-crypto-key=./rsa_public.pem` или `CRYPTO_KEY` |
 
-Пути можно задать абсолютными или относительно текущей директории запуска. Закрытый ключ храните только на сервере; в репозиторий и в агент его не коммитьте.
 
 ## Профилирование памяти
 
