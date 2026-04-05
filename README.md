@@ -61,6 +61,24 @@ go test ./internal/... -v
 go test ./internal/... -run=^$ -bench=. -benchmem
 ```
 
+## RSA-ключи для шифрования метрик (опционально)
+
+Генерация пары в корне репозитория (нужен [OpenSSL](https://www.openssl.org/) в `PATH`):
+
+```bash
+openssl genrsa -out rsa_private.pem 2048
+openssl rsa -in rsa_private.pem -pubout -out rsa_public.pem
+```
+
+**Файлы и флаги:**
+
+| Файл | Кто использует | Параметр |
+|------|----------------|----------|
+| `rsa_private.pem` | сервер | `-crypto-key=./rsa_private.pem` или `CRYPTO_KEY` |
+| `rsa_public.pem` | агент | `-crypto-key=./rsa_public.pem` или `CRYPTO_KEY` |
+
+Пути можно задать абсолютными или относительно текущей директории запуска. Закрытый ключ храните только на сервере; в репозиторий и в агент его не коммитьте.
+
 ## Профилирование памяти
 
 Одна и та же нагрузка до и после оптимизаций (порядок сохранять).
