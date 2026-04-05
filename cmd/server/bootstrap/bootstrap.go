@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"crypto/rsa"
+	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -9,6 +11,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/config"
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
+	"github.com/iPatrushevSergey/metrics/internal/reqcrypto"
 	"github.com/iPatrushevSergey/metrics/internal/service"
 )
 
@@ -48,8 +51,17 @@ func InitializeApp(cfg config.ServerConfig, loggerAdapter logger.Logger) (*App, 
 
 	metricHandler := handler.NewMetricHandler(metricService, loggerAdapter, auditPublisher)
 
+	var priv *rsa.PrivateKey
+	if cfg.CryptoKey != "" {
+		var err error
+		priv, err = reqcrypto.LoadRSAPrivateKeyFromFile(cfg.CryptoKey)
+		if err != nil {
+			return nil, fmt.Errorf("load RSA private key: %w", err)
+		}
+	}
+
 	// Setup router
-	router := SetupRouter(metricHandler, cfg, loggerAdapter)
+	router := SetupRouter(metricHandler, cfg, loggerAdapter, priv)
 
 	// Create HTTP server
 	server := &http.Server{
