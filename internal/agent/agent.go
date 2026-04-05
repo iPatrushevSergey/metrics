@@ -4,6 +4,7 @@ package agent
 import (
 	"compress/gzip"
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
+	"github.com/iPatrushevSergey/metrics/internal/reqcrypto"
 	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
@@ -56,6 +58,8 @@ type Agent struct {
 	results        chan error
 	workersStarted bool
 	workersWg      sync.WaitGroup
+
+	pubKey *rsa.PublicKey // optional RSA public key for encrypting payloads
 }
 
 // NewAgent creates an Agent with the given config and logger.
@@ -64,11 +68,21 @@ func NewAgent(config config.AgentConfig, logger logger.Logger) (*Agent, error) {
 		return nil, fmt.Errorf("rate limit must be greater than or equal to 0, got: %d", config.RateLimit)
 	}
 
+	var pub *rsa.PublicKey
+	if config.CryptoKey != "" {
+		var err error
+		pub, err = reqcrypto.LoadRSAPublicKeyFromFile(config.CryptoKey)
+		if err != nil {
+			return nil, fmt.Errorf("load RSA public key: %w", err)
+		}
+	}
+
 	return &Agent{
 		config:      config,
 		client:      &http.Client{Timeout: 2 * time.Second},
 		logger:      logger,
 		retryConfig: DefaultRetryConfig(),
+		pubKey:      pub,
 	}, nil
 }
 
@@ -276,7 +290,7 @@ func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mVal
 	}
 
 	// Send request with retry logic
-	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key)
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key, a.pubKey)
 	if err != nil {
 		return fmt.Errorf("request sending error: %w", err)
 	}
@@ -411,7 +425,7 @@ func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.M
 	}
 
 	// Send request with retry logic
-	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key)
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key, a.pubKey)
 	if err != nil {
 		return fmt.Errorf("request sending error for batch: %w", err)
 	}
