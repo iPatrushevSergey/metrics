@@ -105,6 +105,7 @@ type AgentConfig struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	Key            string // Key for hash calculation
+	CryptoKey      string // Path to PEM file with RSA public key (optional)
 	RateLimit      int
 	LogLevel       string
 }
@@ -123,6 +124,7 @@ type agentInternalConfig struct {
 	PollInterval   Duration `env:"POLL_INTERVAL"`
 	ReportInterval Duration `env:"REPORT_INTERVAL"`
 	Key            string   `env:"KEY"`
+	CryptoKey      string   `env:"CRYPTO_KEY"`
 	RateLimit      int      `env:"RATE_LIMIT"`
 	LogLevel       string   `env:"LOG_LEVEL"`
 }
@@ -145,6 +147,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 	fs.Var(&cfg.ReportInterval, "r", "frequency of sending metrics (seconds or duration)")
 	fs.Var(&cfg.PollInterval, "p", "frequency of metrics polling (seconds or duration)")
 	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
+	fs.StringVar(&cfg.CryptoKey, "crypto-key", "", "path to RSA public key PEM for encrypting payloads to the server")
 	fs.IntVar(&cfg.RateLimit, "l", 0, "rate limit for concurrent batch requests (0 = sequential, >0 = worker pool size)")
 	fs.StringVar(&cfg.LogLevel, "log", "info", "logging level")
 
@@ -163,6 +166,7 @@ func LoadAgentConfig() (AgentConfig, error) {
 		PollInterval:   cfg.PollInterval.Duration,
 		ReportInterval: cfg.ReportInterval.Duration,
 		Key:            cfg.Key,
+		CryptoKey:      cfg.CryptoKey,
 		RateLimit:      cfg.RateLimit,
 		LogLevel:       cfg.LogLevel,
 	}
@@ -182,6 +186,7 @@ type ServerConfig struct {
 	DatabaseDSN      string
 	EnableRetry      bool   // Enable retry logic for PostgreSQL operations
 	Key              string // Key for hash calculation
+	CryptoKey        string // Path to PEM file with RSA private key (optional)
 	AuditFilePath    string
 	AuditURL         string
 	AuditHTTPTimeout time.Duration
@@ -208,6 +213,7 @@ type serverInternalConfig struct {
 	DatabaseDSN      string   `env:"DATABASE_DSN"`
 	EnableRetry      bool     `env:"ENABLE_RETRY"`
 	Key              string   `env:"KEY"`
+	CryptoKey        string   `env:"CRYPTO_KEY"`
 	AuditFilePath    string   `env:"AUDIT_FILE"`
 	AuditURL         string   `env:"AUDIT_URL"`
 	AuditHTTPTimeout Duration `env:"AUDIT_HTTP_TIMEOUT"`
@@ -241,6 +247,7 @@ func LoadServerConfig() (ServerConfig, error) {
 		"database dsn, example: postgres://user:password@localhost:5432/db?sslmode=disable",
 	)
 	fs.StringVar(&cfg.Key, "k", "", "key for hash calculation")
+	fs.StringVar(&cfg.CryptoKey, "crypto-key", "", "path to RSA private key PEM for decrypting agent payloads")
 	fs.StringVar(&cfg.AuditFilePath, "audit-file", "", "the path to the file where the audit logs are saved")
 	fs.StringVar(&cfg.AuditURL, "audit-url", "", "the full URL where the audit logs are sent")
 	fs.Var(&cfg.AuditHTTPTimeout, "audit-http-timeout", "audit HTTP timeout (seconds or duration)")
@@ -264,6 +271,7 @@ func LoadServerConfig() (ServerConfig, error) {
 		DatabaseDSN:      cfg.DatabaseDSN,
 		EnableRetry:      cfg.EnableRetry,
 		Key:              cfg.Key,
+		CryptoKey:        cfg.CryptoKey,
 		AuditFilePath:    cfg.AuditFilePath,
 		AuditURL:         cfg.AuditURL,
 		AuditHTTPTimeout: cfg.AuditHTTPTimeout.Duration,
