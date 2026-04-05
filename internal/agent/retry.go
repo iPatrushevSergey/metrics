@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 
 	"github.com/cenkalti/backoff/v5"
 	"github.com/iPatrushevSergey/metrics/internal/hash"
+	"github.com/iPatrushevSergey/metrics/internal/reqcrypto"
 	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
@@ -43,11 +45,23 @@ func sendRequestWithRetry(
 	url string,
 	bodyBytes []byte,
 	key string,
+	pub *rsa.PublicKey,
 ) (*http.Response, error) {
+	wireBody := bodyBytes
+	contentType := "application/json"
+	if pub != nil {
+		enc, err := reqcrypto.Seal(pub, bodyBytes)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt body: %w", err)
+		}
+		wireBody = enc
+		contentType = "application/octet-stream"
+	}
+
 	// Compress body once before retry loop
 	var compressedBuf bytes.Buffer
 	gz := gzip.NewWriter(&compressedBuf)
-	if _, err := gz.Write(bodyBytes); err != nil {
+	if _, err := gz.Write(wireBody); err != nil {
 		return nil, fmt.Errorf("error compressing body: %w", err)
 	}
 	if err := gz.Close(); err != nil {
@@ -62,9 +76,12 @@ func sendRequestWithRetry(
 		if err != nil {
 			return nil, backoff.Permanent(fmt.Errorf("request creation error: %w", err))
 		}
-		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Content-Type", contentType)
 		req.Header.Add("Content-Encoding", "gzip")
 		req.Header.Add("Accept-Encoding", "gzip")
+		if pub != nil {
+			req.Header.Set(reqcrypto.HeaderName, reqcrypto.HeaderValue)
+		}
 
 		if key != "" {
 			hashValue := hash.CalculateHash(bodyBytes, key)
