@@ -59,6 +59,8 @@ type Agent struct {
 	workersStarted bool
 	workersWg      sync.WaitGroup
 
+	sendsWg sync.WaitGroup
+
 	pubKey *rsa.PublicKey // optional RSA public key for encrypting payloads
 }
 
@@ -89,6 +91,11 @@ func NewAgent(config config.AgentConfig, logger logger.Logger) (*Agent, error) {
 // Stop stops the agent's workers
 func (a *Agent) Stop() {
 	a.stopWorkers()
+}
+
+// WaitSendsDone waits for all started reportMetrics goroutines to return.
+func (a *Agent) WaitSendsDone() {
+	a.sendsWg.Wait()
 }
 
 // PollMetrics collects go runtime and custom metrics
@@ -151,11 +158,14 @@ func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
 	}
 }
 
-// ReportMetrics report metrics
+// ReportMetrics report metrics.
+// pollCtx cancels polling the ticker loop (no new sends scheduled).
+// sendCtx is passed to HTTP/retry paths so in-flight sends are not canceled when pollCtx ends.
+//
 // Note: Ticker fires at scheduled times (every ReportInterval) regardless of whether ticks are read.
 // If a tick is not read, it's buffered (buffer size = 1) and read immediately when select returns.
 // If more than one tick is missed, extra ticks are lost.
-func (a *Agent) ReportMetrics(ctx context.Context) {
+func (a *Agent) ReportMetrics(pollCtx, sendCtx context.Context) {
 	ticker := time.NewTicker(a.config.ReportInterval)
 	defer ticker.Stop()
 
@@ -164,8 +174,12 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			a.logger.Debug("The beginning of sending metrics")
-			go a.reportMetrics(ctx)
-		case <-ctx.Done():
+			a.sendsWg.Add(1)
+			go func() {
+				defer a.sendsWg.Done()
+				a.reportMetrics(sendCtx)
+			}()
+		case <-pollCtx.Done():
 			a.logger.Info("The metrics sender has been stopped")
 			return
 		}
