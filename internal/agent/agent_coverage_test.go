@@ -118,10 +118,11 @@ func TestReportMetrics_stopsWithContext(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		a.ReportMetrics(ctx)
+		a.ReportMetrics(ctx, ctx)
 	}()
 
 	time.Sleep(60 * time.Millisecond)
 	cancel()
 	wg.Wait()
+	a.WaitSendsDone()
 }
