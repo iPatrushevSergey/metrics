@@ -34,7 +34,7 @@ func StartServer(server *http.Server, loggerInstance logger.Logger) <-chan error
 // WaitForShutdown waits for shutdown signal and performs graceful shutdown
 func WaitForShutdown(app *App, cfg config.ServerConfig, loggerInstance logger.Logger, serverErrCh <-chan error) error {
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	for {
 		select {
 		case <-quit:
@@ -52,24 +52,23 @@ func WaitForShutdown(app *App, cfg config.ServerConfig, loggerInstance logger.Lo
 	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	defer cancel()
 
-	// Save metrics on shutdown if using file storage
+	loggerInstance.Debug("Shutting down server...")
+	if err := app.Server.Shutdown(ctx); err != nil {
+		loggerInstance.Error("Server shutdown failed", zap.Error(err))
+		return err
+	}
+
+	// Save metrics on shutdown if using file storage.
+	// Server.Shutdown runs first so in-flight requests can update repository before final flush.
 	if cfg.DatabaseDSN == "" && app.FileStorage != nil {
 		if app.PeriodicSaver != nil {
 			loggerInstance.Debug("Stopping periodic saver...")
 			app.PeriodicSaver.Stop()
-			// Give periodic saver a moment to finish current operation
-			time.Sleep(100 * time.Millisecond)
 			loggerInstance.Debug("Periodic saver stopped successfully")
 		}
 		if err := filestorage.SaveOnShutdown(ctx, app.Repository, app.FileStorage); err != nil {
 			loggerInstance.Error("Failed to save metrics on shutdown", zap.Error(err))
 		}
-	}
-
-	loggerInstance.Debug("Shutting down server...")
-	if err := app.Server.Shutdown(ctx); err != nil {
-		loggerInstance.Error("Server shutdown failed", zap.Error(err))
-		return err
 	}
 
 	if app.AuditPublisher != nil {
