@@ -2,6 +2,7 @@ package filestorage
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/internal/logger"
@@ -15,6 +16,7 @@ type PeriodicSaver struct {
 	fs       *FileStorage
 	interval time.Duration
 	stopCh   chan struct{}
+	wg       sync.WaitGroup
 }
 
 // NewPeriodicSaver returns a PeriodicSaver. Call Start to begin saving; call Stop before shutdown.
@@ -29,7 +31,9 @@ func NewPeriodicSaver(repo repository.MetricRepository, fs *FileStorage, interva
 
 // Start starts the background goroutine that saves metrics at each interval.
 func (ps *PeriodicSaver) Start() {
+	ps.wg.Add(1)
 	go func() {
+		defer ps.wg.Done()
 		ticker := time.NewTicker(ps.interval)
 		defer ticker.Stop()
 
@@ -50,6 +54,7 @@ func (ps *PeriodicSaver) Start() {
 // Stop stops the periodic saver goroutine.
 func (ps *PeriodicSaver) Stop() {
 	close(ps.stopCh)
+	ps.wg.Wait()
 }
 
 func (ps *PeriodicSaver) saveMetrics() {
