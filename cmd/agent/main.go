@@ -40,36 +40,39 @@ func main() {
 		loggerAdapter.Fatal("Failed to create agent", zap.Error(err))
 	}
 
-	// The pattern "Graceful Shutdown"
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel() // The pattern "belt and suspenders"
+	pollCtx, cancelPoll := context.WithCancel(context.Background())
+	defer cancelPoll()
+	sendCtx, cancelSend := context.WithCancel(context.Background())
+	defer cancelSend()
 
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		a.PollMetrics(ctx)
+		a.PollMetrics(pollCtx)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		a.PollGopsutilMetrics(ctx)
+		a.PollGopsutilMetrics(pollCtx)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		a.ReportMetrics(ctx)
+		a.ReportMetrics(pollCtx, sendCtx)
 	}()
 
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	<-quit
 	loggerAdapter.Info("The completion signal has been received, starting the stop...")
-	cancel()
+	cancelPoll()
 
 	wg.Wait()
+	a.WaitSendsDone()
 	a.Stop()
+	cancelSend()
 	loggerAdapter.Info("The agent has been stopped")
 }

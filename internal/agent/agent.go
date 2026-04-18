@@ -4,6 +4,7 @@ package agent
 import (
 	"compress/gzip"
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/internal/handler"
 	"github.com/iPatrushevSergey/metrics/internal/logger"
 	"github.com/iPatrushevSergey/metrics/internal/model"
+	"github.com/iPatrushevSergey/metrics/internal/reqcrypto"
 	"github.com/iPatrushevSergey/metrics/internal/retry"
 )
 
@@ -56,6 +58,10 @@ type Agent struct {
 	results        chan error
 	workersStarted bool
 	workersWg      sync.WaitGroup
+
+	sendsWg sync.WaitGroup
+
+	pubKey *rsa.PublicKey // optional RSA public key for encrypting payloads
 }
 
 // NewAgent creates an Agent with the given config and logger.
@@ -64,17 +70,32 @@ func NewAgent(config config.AgentConfig, logger logger.Logger) (*Agent, error) {
 		return nil, fmt.Errorf("rate limit must be greater than or equal to 0, got: %d", config.RateLimit)
 	}
 
+	var pub *rsa.PublicKey
+	if config.CryptoKey != "" {
+		var err error
+		pub, err = reqcrypto.LoadRSAPublicKeyFromFile(config.CryptoKey)
+		if err != nil {
+			return nil, fmt.Errorf("load RSA public key: %w", err)
+		}
+	}
+
 	return &Agent{
 		config:      config,
 		client:      &http.Client{Timeout: 2 * time.Second},
 		logger:      logger,
 		retryConfig: DefaultRetryConfig(),
+		pubKey:      pub,
 	}, nil
 }
 
 // Stop stops the agent's workers
 func (a *Agent) Stop() {
 	a.stopWorkers()
+}
+
+// WaitSendsDone waits for all started reportMetrics goroutines to return.
+func (a *Agent) WaitSendsDone() {
+	a.sendsWg.Wait()
 }
 
 // PollMetrics collects go runtime and custom metrics
@@ -137,11 +158,14 @@ func (a *Agent) PollGopsutilMetrics(ctx context.Context) {
 	}
 }
 
-// ReportMetrics report metrics
+// ReportMetrics report metrics.
+// pollCtx cancels polling the ticker loop (no new sends scheduled).
+// sendCtx is passed to HTTP/retry paths so in-flight sends are not canceled when pollCtx ends.
+//
 // Note: Ticker fires at scheduled times (every ReportInterval) regardless of whether ticks are read.
 // If a tick is not read, it's buffered (buffer size = 1) and read immediately when select returns.
 // If more than one tick is missed, extra ticks are lost.
-func (a *Agent) ReportMetrics(ctx context.Context) {
+func (a *Agent) ReportMetrics(pollCtx, sendCtx context.Context) {
 	ticker := time.NewTicker(a.config.ReportInterval)
 	defer ticker.Stop()
 
@@ -150,8 +174,12 @@ func (a *Agent) ReportMetrics(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			a.logger.Debug("The beginning of sending metrics")
-			go a.reportMetrics(ctx)
-		case <-ctx.Done():
+			a.sendsWg.Add(1)
+			go func() {
+				defer a.sendsWg.Done()
+				a.reportMetrics(sendCtx)
+			}()
+		case <-pollCtx.Done():
 			a.logger.Info("The metrics sender has been stopped")
 			return
 		}
@@ -276,7 +304,7 @@ func (a *Agent) sendMetricRequest(ctx context.Context, mType, mName string, mVal
 	}
 
 	// Send request with retry logic
-	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key)
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key, a.pubKey)
 	if err != nil {
 		return fmt.Errorf("request sending error: %w", err)
 	}
@@ -411,7 +439,7 @@ func (a *Agent) sendMetricsBatchRequest(ctx context.Context, metrics []handler.M
 	}
 
 	// Send request with retry logic
-	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key)
+	response, err := sendRequestWithRetry(ctx, a.client, a.retryConfig, url, bodyBytes, a.config.Key, a.pubKey)
 	if err != nil {
 		return fmt.Errorf("request sending error for batch: %w", err)
 	}

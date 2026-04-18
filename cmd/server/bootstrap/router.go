@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"crypto/rsa"
+
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	gojson "github.com/goccy/go-json"
@@ -24,10 +26,11 @@ func (g *GinJSONSerializer) Deserialize(c *gin.Context, data []byte, v any) erro
 }
 
 // SetupRouter configures and returns the HTTP router with all routes and middleware
-func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig, log logger.Logger) *gin.Engine {
+func SetupRouter(metricHandler *handler.MetricHandler, cfg config.ServerConfig, log logger.Logger, priv *rsa.PrivateKey) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.GzipGinMiddleware(log))
+	router.Use(middleware.CryptoDecryptMiddleware(priv, log))
 	router.Use(middleware.HashMiddleware(cfg.Key))
 	router.Use(middleware.LoggerMiddleware())
 	router.Use(func(c *gin.Context) {

@@ -19,7 +19,6 @@ func TestNewPeriodicSaver_Start_Stop(t *testing.T) {
 	ps := NewPeriodicSaver(repo, fs, 10*time.Hour)
 	ps.Start()
 	ps.Stop()
-	time.Sleep(50 * time.Millisecond)
 }
 
 func TestSaveOnShutdown(t *testing.T) {
