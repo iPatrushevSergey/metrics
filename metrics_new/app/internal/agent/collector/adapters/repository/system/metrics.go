@@ -39,8 +39,8 @@ func (s *MetricsRepository) UpdateGopsutilStats(totalMem, freeMem float64, cpu [
 	s.st.Gopsutil.CPUutilization = cpu
 }
 
-// Snapshot returns metrics of the current system status.
-func (s *MetricsRepository) Snapshot() entity.SystemState {
+// GetSystemState returns the current system state.
+func (s *MetricsRepository) GetSystemState() entity.SystemState {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return entity.SystemState{
