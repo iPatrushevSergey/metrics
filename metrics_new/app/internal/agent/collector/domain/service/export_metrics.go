@@ -8,14 +8,14 @@ import (
 )
 
 // CountersFromState builds counter metrics.
-func CountersFromState(poll *entity.AgentPollStats) map[string]int64 {
+func CountersFromState(poll *entity.AgentPollMetrics) map[string]int64 {
 	return map[string]int64{
 		"PollCount": poll.PollCount,
 	}
 }
 
 // GaugesFromState builds gauge metric values from runtime, poll, and host stats.
-func GaugesFromState(ms *runtime.MemStats, poll *entity.AgentPollStats, gs *entity.GopsutilStats) map[string]float64 {
+func GaugesFromState(ms *runtime.MemStats, poll *entity.AgentPollMetrics, gs *entity.GopsutilMetrics) map[string]float64 {
 	m := map[string]float64{
 		"Alloc":         float64(ms.Alloc),
 		"BuckHashSys":   float64(ms.BuckHashSys),
