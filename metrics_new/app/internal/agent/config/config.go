@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
+
+	metricsserver "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metricsserver"
 )
 
 type Config struct {
@@ -23,12 +25,12 @@ type Config struct {
 
 // Agent holds collector settings.
 type Agent struct {
-	Address        string        `mapstructure:"address"`
-	PollInterval   time.Duration `mapstructure:"poll_interval"`
-	ReportInterval time.Duration `mapstructure:"report_interval"`
-	Key            string        `mapstructure:"key"`
-	CryptoKey      string        `mapstructure:"crypto_key"`
-	RateLimit      int           `mapstructure:"rate_limit"`
+	metricsserver.ServerConfig `mapstructure:",squash"`
+	PollInterval               time.Duration `mapstructure:"poll_interval"`
+	ReportInterval             time.Duration `mapstructure:"report_interval"`
+	RateLimit                  int           `mapstructure:"rate_limit"`
+	Key                        string        `mapstructure:"key"`
+	CryptoKey                  string        `mapstructure:"crypto_key"`
 }
 
 // LoadConfig loads agent settings. Priority: flags > env > file > defaults.
@@ -40,6 +42,7 @@ func LoadConfig() (Config, error) {
 	fs.StringP("poll-interval", "p", "", "poll interval (seconds or duration, e.g. 2s)")
 	fs.StringP("report-interval", "r", "", "report interval (seconds or duration)")
 	fs.StringP("key", "k", "", "key for hash calculation")
+	fs.String("http-timeout", "", "metrics server HTTP client timeout (duration)")
 	fs.String("crypto-key", "", "path to RSA public key PEM for payload encryption")
 	fs.IntP("rate-limit", "l", 0, "concurrent batch workers (0 = sequential)")
 	fs.String("log", "", "logging level")
@@ -162,6 +165,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("logger.level", "info")
 
 	v.SetDefault("agent.address", "http://127.0.0.1:8080")
+	v.SetDefault("agent.http_timeout", "2s")
 	v.SetDefault("agent.poll_interval", "2s")
 	v.SetDefault("agent.report_interval", "10s")
 	v.SetDefault("agent.key", "")
@@ -175,6 +179,7 @@ func bindEnv(v *viper.Viper) {
 	v.AutomaticEnv()
 
 	_ = v.BindEnv("agent.address", "ADDRESS")
+	_ = v.BindEnv("agent.http_timeout", "HTTP_TIMEOUT")
 	_ = v.BindEnv("agent.poll_interval", "POLL_INTERVAL")
 	_ = v.BindEnv("agent.report_interval", "REPORT_INTERVAL")
 	_ = v.BindEnv("agent.key", "KEY")
@@ -187,6 +192,7 @@ func bindEnv(v *viper.Viper) {
 func bindFlags(v *viper.Viper, fs *pflag.FlagSet) error {
 	bindings := map[string]string{
 		"agent.address":         "address",
+		"agent.http_timeout":    "http-timeout",
 		"agent.poll_interval":   "poll-interval",
 		"agent.report_interval": "report-interval",
 		"agent.key":             "key",
@@ -206,14 +212,14 @@ func bindFlags(v *viper.Viper, fs *pflag.FlagSet) error {
 	return nil
 }
 
-// finalizeConfig validates required fields and normalizes agent address.
+// finalizeConfig validates required fields and normalizes metrics server address.
 func finalizeConfig(cfg *Config) error {
 	a := &cfg.Agent
-	addr, err := parseURLAddress(a.Address)
+	addr, err := parseURLAddress(a.ServerConfig.Address)
 	if err != nil {
-		return fmt.Errorf("invalid agent address: %w", err)
+		return fmt.Errorf("invalid metrics server address: %w", err)
 	}
-	a.Address = addr
+	a.ServerConfig.Address = addr
 
 	a.Key = strings.TrimSpace(a.Key)
 	a.CryptoKey = strings.TrimSpace(a.CryptoKey)
