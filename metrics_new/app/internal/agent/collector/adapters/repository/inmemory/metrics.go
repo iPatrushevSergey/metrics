@@ -11,7 +11,7 @@ import (
 // MetricsRepository repository for collected metrics state.
 type MetricsRepository struct {
 	mu sync.RWMutex
-	st entity.SystemState
+	st entity.SystemMetrics
 }
 
 var _ port.MetricsRepository = (*MetricsRepository)(nil)
@@ -21,17 +21,17 @@ func NewMetricsRepository() *MetricsRepository {
 	return &MetricsRepository{}
 }
 
-// UpdateRuntimeStats updates runtime memstats and poll stats.
-func (s *MetricsRepository) UpdateRuntimeStats(randFloat func() float64) {
+// UpdateRuntimeMetrics updates runtime memstats and poll stats.
+func (s *MetricsRepository) UpdateRuntimeMetrics(ms runtime.MemStats, randValue float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	runtime.ReadMemStats(&s.st.MemStats)
+	s.st.Runtime.MemStats = ms
 	s.st.Poll.PollCount++
-	s.st.Poll.RandomValue = randFloat()
+	s.st.Poll.RandomValue = randValue
 }
 
-// UpdateGopsutilStats updates gopsutil stats.
-func (s *MetricsRepository) UpdateGopsutilStats(totalMem, freeMem float64, cpu []float64) {
+// UpdateGopsutilMetrics updates host memory and CPU samples.
+func (s *MetricsRepository) UpdateGopsutilMetrics(totalMem, freeMem float64, cpu []float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.st.Gopsutil.TotalMemory = totalMem
@@ -39,14 +39,14 @@ func (s *MetricsRepository) UpdateGopsutilStats(totalMem, freeMem float64, cpu [
 	s.st.Gopsutil.CPUutilization = cpu
 }
 
-// GetSystemState returns the current system state.
-func (s *MetricsRepository) GetSystemState() entity.SystemState {
+// GetSystemState returns the current system state
+func (s *MetricsRepository) GetSystemMetrics() entity.SystemMetrics {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return entity.SystemState{
-		MemStats: s.st.MemStats,
-		Poll:     s.st.Poll,
-		Gopsutil: entity.GopsutilStats{
+	return entity.SystemMetrics{
+		Runtime: s.st.Runtime,
+		Poll:    s.st.Poll,
+		Gopsutil: entity.GopsutilMetrics{
 			TotalMemory:    s.st.Gopsutil.TotalMemory,
 			FreeMemory:     s.st.Gopsutil.FreeMemory,
 			CPUutilization: append([]float64(nil), s.st.Gopsutil.CPUutilization...),
