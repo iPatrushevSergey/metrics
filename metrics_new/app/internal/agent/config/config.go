@@ -25,12 +25,12 @@ type Config struct {
 
 // Agent holds collector settings.
 type Agent struct {
-	metricsserver.ServerConfig `mapstructure:",squash"`
-	PollInterval               time.Duration `mapstructure:"poll_interval"`
-	ReportInterval             time.Duration `mapstructure:"report_interval"`
-	RateLimit                  int           `mapstructure:"rate_limit"`
-	Key                        string        `mapstructure:"key"`
-	CryptoKey                  string        `mapstructure:"crypto_key"`
+	metricsserver.MetricsClientConfig `mapstructure:",squash"`
+	PollInterval                      time.Duration `mapstructure:"poll_interval"`
+	ReportInterval                    time.Duration `mapstructure:"report_interval"`
+	RateLimit                         int           `mapstructure:"rate_limit"`
+	Key                               string        `mapstructure:"key"`
+	CryptoKey                         string        `mapstructure:"crypto_key"`
 }
 
 // LoadConfig loads agent settings. Priority: flags > env > file > defaults.
@@ -215,11 +215,11 @@ func bindFlags(v *viper.Viper, fs *pflag.FlagSet) error {
 // finalizeConfig validates required fields and normalizes metrics server address.
 func finalizeConfig(cfg *Config) error {
 	a := &cfg.Agent
-	addr, err := parseURLAddress(a.ServerConfig.Address)
+	addr, err := parseURLAddress(a.MetricsClientConfig.Address)
 	if err != nil {
 		return fmt.Errorf("invalid metrics server address: %w", err)
 	}
-	a.ServerConfig.Address = addr
+	a.MetricsClientConfig.Address = addr
 
 	a.Key = strings.TrimSpace(a.Key)
 	a.CryptoKey = strings.TrimSpace(a.CryptoKey)
