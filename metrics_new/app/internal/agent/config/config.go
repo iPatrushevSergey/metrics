@@ -15,7 +15,7 @@ import (
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
 
-	metricsserver "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metricsserver"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_client"
 )
 
 type Config struct {
@@ -25,12 +25,12 @@ type Config struct {
 
 // Agent holds collector settings.
 type Agent struct {
-	metricsserver.MetricsClientConfig `mapstructure:",squash"`
-	PollInterval                      time.Duration `mapstructure:"poll_interval"`
-	ReportInterval                    time.Duration `mapstructure:"report_interval"`
-	RateLimit                         int           `mapstructure:"rate_limit"`
-	Key                               string        `mapstructure:"key"`
-	CryptoKey                         string        `mapstructure:"crypto_key"`
+	metrics_client.MetricsClientConfig `mapstructure:",squash"`
+	PollInterval                       time.Duration `mapstructure:"poll_interval"`
+	ReportInterval                     time.Duration `mapstructure:"report_interval"`
+	RateLimit                          int           `mapstructure:"rate_limit"`
+	Key                                string        `mapstructure:"key"`
+	CryptoKey                          string        `mapstructure:"crypto_key"`
 }
 
 // LoadConfig loads agent settings. Priority: flags > env > file > defaults.
