@@ -23,7 +23,7 @@ const (
 	gcmNonceSize = 12 // standard AES-GCM IV length in Go's cipher.NewGCM
 )
 
-// RSAEncryptor hybrid-seals with pub and priv keys.
+// RSAEncryptor implements hybrid encryption with public and private keys.
 type RSAEncryptor struct {
 	pub  *rsa.PublicKey
 	priv *rsa.PrivateKey
