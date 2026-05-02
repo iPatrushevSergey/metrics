@@ -10,7 +10,7 @@ const (
 	HashSHA256Header = "HashSHA256"
 )
 
-// SHA256Hasher calculates and verifies SHA256 hashes for signed requests.
+// SHA256Hasher implements SHA256 hash calculation and verification for signed requests.
 type SHA256Hasher struct {
 	key string
 }
