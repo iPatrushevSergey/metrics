@@ -15,9 +15,9 @@ type RetriableFunc func(error) bool
 
 // retryConfig is the configuration for the retry mechanism.
 type retryConfig struct {
-	maxRetries      int
-	backoff         BackoffFunc
-	isRetriableFunc RetriableFunc
+	maxRetries int
+	backoff    BackoffFunc
+	retriable  RetriableFunc
 }
 
 // RetryOption configures retry behaviour.
@@ -57,17 +57,17 @@ func WithBackoffFunc(fn BackoffFunc) RetryOption {
 }
 
 // WithRetriableCheck overrides the function that decides if an error is retriable.
+// Required for any repeating on failure — the defaults treat every error as non-retriable.
 func WithRetriableCheck(fn RetriableFunc) RetryOption {
-	return func(c *retryConfig) { c.isRetriableFunc = fn }
+	return func(c *retryConfig) { c.retriable = fn }
 }
 
 // DoWithRetry executes the operation and retries on retriable errors.
-// Respects context cancellation between attempts.
 func DoWithRetry(ctx context.Context, op func() error, opts ...RetryOption) error {
 	cfg := retryConfig{
-		maxRetries:      3,
-		backoff:         func(_ int) time.Duration { return 100 * time.Millisecond },
-		isRetriableFunc: func(error) bool { return false },
+		maxRetries: 3,
+		backoff:    func(_ int) time.Duration { return 100 * time.Millisecond },
+		retriable:  func(error) bool { return false }, // no repeats until WithRetriableCheck
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -80,7 +80,7 @@ func DoWithRetry(ctx context.Context, op func() error, opts ...RetryOption) erro
 			return nil
 		}
 
-		if !cfg.isRetriableFunc(err) {
+		if !cfg.retriable(err) {
 			return err
 		}
 
