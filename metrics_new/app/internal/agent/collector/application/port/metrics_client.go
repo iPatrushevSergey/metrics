@@ -8,5 +8,5 @@ import (
 
 // MetricsSender communicates with the external metrics server.
 type MetricsClient interface {
-	UpdateMetricsBatch(ctx context.Context, metrics []dto.MetricUpdateInput) error
+	MetricsUpdateBatch(ctx context.Context, metrics []dto.MetricUpdateInput) error
 }
