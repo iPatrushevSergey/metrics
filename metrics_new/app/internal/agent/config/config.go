@@ -28,9 +28,10 @@ type Agent struct {
 	metrics_client.MetricsClientConfig `mapstructure:",squash"`
 	PollInterval                       time.Duration `mapstructure:"poll_interval"`
 	ReportInterval                     time.Duration `mapstructure:"report_interval"`
-	RateLimit                          int           `mapstructure:"rate_limit"`
-	Key                                string        `mapstructure:"key"`
-	CryptoKey                          string        `mapstructure:"crypto_key"`
+	// RateLimit is the worker-pool size: max simultaneous outbound metric batch RPCs toward the server. Not "requests per second".
+	RateLimit int    `mapstructure:"rate_limit"`
+	Key       string `mapstructure:"key"`
+	CryptoKey string `mapstructure:"crypto_key"`
 }
 
 // LoadConfig loads agent settings. Priority: flags > env > file > defaults.
