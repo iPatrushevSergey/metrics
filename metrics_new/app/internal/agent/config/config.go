@@ -34,7 +34,7 @@ type Agent struct {
 	CryptoKey string `mapstructure:"crypto_key"`
 }
 
-// LoadConfig loads agent settings. Priority: flags > env > file > defaults.
+// LoadConfig loads agent settings. Priority: env > flags > file > defaults.
 func LoadConfig() (Config, error) {
 	fs := pflag.NewFlagSet("agent", pflag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -66,15 +66,15 @@ func LoadConfig() (Config, error) {
 	setDefaults(v)
 
 	configPath, _ := fs.GetString("config")
-	configEnvRaw, configEnvOk := os.LookupEnv("CONFIG")
-	configEnv := strings.TrimSpace(configEnvRaw)
-	if !fs.Changed("config") && configEnvOk && configEnv != "" {
-		configPath = configEnv
+	if _, ok := os.LookupEnv("CONFIG"); ok {
+		configPath = strings.TrimSpace(os.Getenv("CONFIG"))
 	}
 	v.SetConfigFile(configPath)
 	if err := v.ReadInConfig(); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if fs.Changed("config") || (configEnvOk && configEnv != "") {
+			_, configEnvSet := os.LookupEnv("CONFIG")
+			configPathFromEnv := configEnvSet && strings.TrimSpace(os.Getenv("CONFIG")) != ""
+			if fs.Changed("config") || configPathFromEnv {
 				return Config{}, fmt.Errorf("config file not found: %s", configPath)
 			}
 			_, _ = fmt.Fprintf(os.Stderr, "config: default config file %s not found, continuing with env/defaults\n", configPath)
@@ -86,8 +86,8 @@ func LoadConfig() (Config, error) {
 	}
 
 	bindEnv(v)
-	if err := bindFlags(v, fs); err != nil {
-		return Config{}, fmt.Errorf("bind flags: %w", err)
+	if err := applyFlagsWhenEnvUnset(v, fs); err != nil {
+		return Config{}, fmt.Errorf("apply flags: %w", err)
 	}
 
 	var cfg Config
@@ -189,26 +189,35 @@ func bindEnv(v *viper.Viper) {
 	_ = v.BindEnv("logger.level", "LOG_LEVEL")
 }
 
-// bindFlags binds the command line flags to the configuration.
-func bindFlags(v *viper.Viper, fs *pflag.FlagSet) error {
-	bindings := map[string]string{
-		"agent.address":         "address",
-		"agent.http_timeout":    "http-timeout",
-		"agent.poll_interval":   "poll-interval",
-		"agent.report_interval": "report-interval",
-		"agent.key":             "key",
-		"agent.crypto_key":      "crypto-key",
-		"agent.rate_limit":      "rate-limit",
-		"logger.level":          "log",
+// applyFlagsWhenEnvUnset sets viper from CLI flags only when the matching env var is absent (env beats flags).
+func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
+	for _, row := range []struct{ key, env, flag string }{
+		{"agent.address", "ADDRESS", "address"},
+		{"agent.http_timeout", "HTTP_TIMEOUT", "http-timeout"},
+		{"agent.poll_interval", "POLL_INTERVAL", "poll-interval"},
+		{"agent.report_interval", "REPORT_INTERVAL", "report-interval"},
+		{"agent.key", "KEY", "key"},
+		{"agent.crypto_key", "CRYPTO_KEY", "crypto-key"},
+		{"logger.level", "LOG_LEVEL", "log"},
+	} {
+		if _, ok := os.LookupEnv(row.env); ok {
+			continue
+		}
+		if !fs.Changed(row.flag) {
+			continue
+		}
+		val, err := fs.GetString(row.flag)
+		if err != nil {
+			return fmt.Errorf("flag %s: %w", row.flag, err)
+		}
+		v.Set(row.key, val)
 	}
-	for key, flagName := range bindings {
-		f := fs.Lookup(flagName)
-		if f == nil {
-			return fmt.Errorf("flag not found: %s", flagName)
+	if _, ok := os.LookupEnv("RATE_LIMIT"); !ok && fs.Changed("rate-limit") {
+		n, err := fs.GetInt("rate-limit")
+		if err != nil {
+			return fmt.Errorf("flag rate-limit: %w", err)
 		}
-		if err := v.BindPFlag(key, f); err != nil {
-			return err
-		}
+		v.Set("agent.rate_limit", n)
 	}
 	return nil
 }
