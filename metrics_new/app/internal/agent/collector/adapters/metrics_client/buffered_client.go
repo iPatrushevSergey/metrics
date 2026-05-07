@@ -3,6 +3,7 @@ package metrics_client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -118,6 +119,11 @@ func (c *BufferedClient) MetricsUpdateBatch(ctx context.Context, metrics []dto.M
 	case c.jobs <- j:
 		return nil
 	case <-time.After(1 * time.Second):
-		return errors.New("metrics_client: jobs channel full, enqueue timed out")
+		c.log.Warn(
+			"batch jobs channel is full, dropping batch to prevent goroutine backlog",
+			"rate_limit", c.workers,
+			"batch_size", len(metrics),
+		)
+		return fmt.Errorf("batch jobs channel is full, rate limit exceeded")
 	}
 }
