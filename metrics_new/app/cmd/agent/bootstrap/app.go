@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_client"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_gateway"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/sampler"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
@@ -59,9 +59,9 @@ func (a *AgentApp) Run(shutdownCtx context.Context) error {
 
 	metricsRepo := inmemory.NewMetricsRepository()
 	metricsSampler := sampler.NewMetricsSampler()
-	metricsClient := metrics_client.NewClient(
-		a.cfg.Agent.MetricsClientConfig,
-		&http.Client{Timeout: a.cfg.Agent.MetricsClientConfig.HTTPTimeout},
+	metricsGateway := metrics_gateway.NewGateway(
+		a.cfg.Agent.MetricsGatewayConfig,
+		&http.Client{Timeout: a.cfg.Agent.MetricsGatewayConfig.HTTPTimeout},
 		compression.NewGzipCompressor(),
 		encryptor,
 		integrity.NewSHA256Hasher(a.cfg.Agent.Key),
@@ -79,22 +79,22 @@ func (a *AgentApp) Run(shutdownCtx context.Context) error {
 		}),
 	)
 
-	var totalMetricsClient port.MetricsClient = metricsClient
-	var bufferedMetricsClient *metrics_client.BufferedClient
+	var totalMetricsGateway port.MetricsGateway = metricsGateway
+	var bufferedMetricsGateway *metrics_gateway.BufferedMetricsGateway
 	if a.cfg.Agent.RateLimit > 0 {
 		var err error
-		bufferedMetricsClient, err = metrics_client.NewBufferedClient(metricsClient, a.log, a.cfg.Agent.RateLimit, sendCtx)
+		bufferedMetricsGateway, err = metrics_gateway.NewBufferedMetricsGateway(metricsGateway, a.log, a.cfg.Agent.RateLimit, sendCtx)
 		if err != nil {
-			return fmt.Errorf("buffered metrics client: %w", err)
+			return fmt.Errorf("buffered metrics gateway: %w", err)
 		}
-		bufferedMetricsClient.Start()
-		totalMetricsClient = bufferedMetricsClient
+		bufferedMetricsGateway.Start()
+		totalMetricsGateway = bufferedMetricsGateway
 	}
 
 	ucf := NewUseCaseFactory(
 		WithMetricsRepo(metricsRepo),
 		WithMetricsSampler(metricsSampler),
-		WithMetricsClient(totalMetricsClient),
+		WithMetricsGateway(totalMetricsGateway),
 		WithLogger(a.log),
 		WithRandFloat(rand.Float64),
 		WithReportInterval(a.cfg.Agent.ReportInterval),
@@ -108,8 +108,8 @@ func (a *AgentApp) Run(shutdownCtx context.Context) error {
 
 	report.WaitSendsWg()
 
-	if bufferedMetricsClient != nil {
-		bufferedMetricsClient.Stop()
+	if bufferedMetricsGateway != nil {
+		bufferedMetricsGateway.Stop()
 	}
 
 	cancelSend()
