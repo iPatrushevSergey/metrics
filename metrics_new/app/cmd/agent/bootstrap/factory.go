@@ -54,7 +54,7 @@ func (f *useCaseFactory) ReportBatchTick() collectorport.BackgroundRunner {
 type factoryParams struct {
 	metricsRepo    collectorport.MetricsRepository
 	metricsSampler collectorport.MetricsSampler
-	metricsClient  collectorport.MetricsClient
+	metricsGateway collectorport.MetricsGateway
 	log            collectorport.Logger
 	randFloat      func() float64
 	reportInterval time.Duration
@@ -68,8 +68,8 @@ func (p factoryParams) validate() {
 	if p.metricsSampler == nil {
 		panic("NewUseCaseFactory: WithMetricsSampler is required")
 	}
-	if p.metricsClient == nil {
-		panic("NewUseCaseFactory: WithMetricsClient is required")
+	if p.metricsGateway == nil {
+		panic("NewUseCaseFactory: WithMetricsGateway is required")
 	}
 	if p.log == nil {
 		panic("NewUseCaseFactory: WithLogger is required")
@@ -87,7 +87,7 @@ func (p factoryParams) collectorParams() collectorfactory.Params {
 	return collectorfactory.Params{
 		MetricsRepo:    p.metricsRepo,
 		MetricsSampler: p.metricsSampler,
-		MetricsClient:  p.metricsClient,
+		MetricsGateway: p.metricsGateway,
 		Log:            p.log,
 		RandFloat:      p.randFloat,
 		ReportInterval: p.reportInterval,
@@ -109,9 +109,9 @@ func WithMetricsSampler(s collectorport.MetricsSampler) option.Option[factoryPar
 	return func(p *factoryParams) { p.metricsSampler = s }
 }
 
-// WithMetricsClient sets the metrics client dependency.
-func WithMetricsClient(c collectorport.MetricsClient) option.Option[factoryParams] {
-	return func(p *factoryParams) { p.metricsClient = c }
+// WithMetricsGateway sets the outbound metrics gateway dependency.
+func WithMetricsGateway(g collectorport.MetricsGateway) option.Option[factoryParams] {
+	return func(p *factoryParams) { p.metricsGateway = g }
 }
 
 // WithLogger sets the logger dependency.
