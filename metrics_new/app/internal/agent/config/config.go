@@ -15,7 +15,7 @@ import (
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_client"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_gateway"
 )
 
 type Config struct {
@@ -25,9 +25,9 @@ type Config struct {
 
 // Agent holds collector settings.
 type Agent struct {
-	metrics_client.MetricsClientConfig `mapstructure:",squash"`
-	PollInterval                       time.Duration `mapstructure:"poll_interval"`
-	ReportInterval                     time.Duration `mapstructure:"report_interval"`
+	metrics_gateway.MetricsGatewayConfig `mapstructure:",squash"`
+	PollInterval           time.Duration `mapstructure:"poll_interval"`
+	ReportInterval         time.Duration `mapstructure:"report_interval"`
 	// RateLimit is the worker-pool size: max simultaneous outbound metric batch RPCs toward the server. Not "requests per second".
 	RateLimit int    `mapstructure:"rate_limit"`
 	Key       string `mapstructure:"key"`
@@ -225,11 +225,11 @@ func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
 // finalizeConfig validates required fields and normalizes metrics server address.
 func finalizeConfig(cfg *Config) error {
 	a := &cfg.Agent
-	addr, err := parseURLAddress(a.MetricsClientConfig.Address)
+	addr, err := parseURLAddress(a.MetricsGatewayConfig.Address)
 	if err != nil {
 		return fmt.Errorf("invalid metrics server address: %w", err)
 	}
-	a.MetricsClientConfig.Address = addr
+	a.MetricsGatewayConfig.Address = addr
 
 	a.Key = strings.TrimSpace(a.Key)
 	a.CryptoKey = strings.TrimSpace(a.CryptoKey)
