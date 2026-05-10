@@ -42,7 +42,7 @@ func LoadConfig() (Config, error) {
 	fs := pflag.NewFlagSet("server", pflag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.StringP("address", "a", "", "listen address (host:port or http://host:port)")
-	fs.StringP("config", "c", "app/configs/metrics.yaml", "path to YAML config")
+	fs.StringP("config", "c", "app/configs/server.yaml", "path to YAML config")
 	fs.StringP("log", "l", "", "logging level")
 	fs.StringP("store-interval", "i", "", "server data save interval (seconds or duration)")
 	fs.StringP("store-file", "f", "", "file path for metric storage")
