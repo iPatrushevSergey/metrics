@@ -11,7 +11,7 @@ import (
 type Params struct {
 	MetricsRepo    port.MetricsRepository
 	MetricsSampler port.MetricsSampler
-	MetricsClient  port.MetricsClient
+	MetricsGateway port.MetricsGateway
 	Log            port.Logger
 	RandFloat      func() float64
 	ReportInterval time.Duration
@@ -29,6 +29,6 @@ func NewUseCases(p Params) *UseCases {
 	return &UseCases{
 		PollRuntime:  usecase.NewPollRuntimeTick(p.MetricsSampler, p.MetricsRepo, p.RandFloat),
 		PollGopsutil: usecase.NewPollGopsutilTick(p.MetricsSampler, p.MetricsRepo, p.Log),
-		ReportBatch:  usecase.NewReportBatchTick(p.MetricsRepo, p.MetricsClient, p.Log, p.ReportInterval),
+		ReportBatch:  usecase.NewReportBatchTick(p.MetricsRepo, p.MetricsGateway, p.Log, p.ReportInterval),
 	}
 }
