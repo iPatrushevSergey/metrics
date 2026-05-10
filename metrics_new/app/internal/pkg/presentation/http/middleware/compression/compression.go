@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/presentation/http/port"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
 
 	"github.com/gin-gonic/gin"
 )

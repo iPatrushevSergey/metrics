@@ -1,6 +1,6 @@
 package logger
 
-import "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/presentation/http/port"
+import "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
 
 // DefaultLogFormatter implements standard logging logic.
 type DefaultLogFormatter struct{}
