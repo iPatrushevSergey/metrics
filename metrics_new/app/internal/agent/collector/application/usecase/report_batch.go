@@ -12,24 +12,24 @@ import (
 
 // ReportBatchTick sends metrics batch built from the current metrics repository.
 type ReportBatchTick struct {
-	metricsRepo   port.MetricsRepository
-	metricsClient port.MetricsClient
-	log           port.Logger
-	interval      time.Duration
+	metricsRepo    port.MetricsRepository
+	metricsGateway port.MetricsGateway
+	log            port.Logger
+	interval       time.Duration
 }
 
 // NewReportBatchTick returns report batch tick use case.
 func NewReportBatchTick(
 	metricsRepo port.MetricsRepository,
-	metricsClient port.MetricsClient,
+	metricsGateway port.MetricsGateway,
 	log port.Logger,
 	reportInterval time.Duration,
 ) *ReportBatchTick {
 	return &ReportBatchTick{
-		metricsRepo:   metricsRepo,
-		metricsClient: metricsClient,
-		log:           log,
-		interval:      reportInterval,
+		metricsRepo:    metricsRepo,
+		metricsGateway: metricsGateway,
+		log:            log,
+		interval:       reportInterval,
 	}
 }
 
@@ -72,7 +72,7 @@ func (uc *ReportBatchTick) Run(ctx context.Context) (int, error) {
 		out = append(out, dto.MetricUpdateInput{ID: name, MType: "counter", Delta: &delta})
 	}
 
-	if err := uc.metricsClient.MetricsUpdateBatch(ctx, out); err != nil {
+	if err := uc.metricsGateway.MetricsUpdateBatch(ctx, out); err != nil {
 		if errors.Is(err, context.Canceled) {
 			uc.log.Info("sending metrics batch canceled")
 			return 0, err
