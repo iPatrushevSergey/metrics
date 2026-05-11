@@ -12,9 +12,6 @@ var (
 	// ErrUnsupportedMetricType indicates metric type is not counter or gauge.
 	ErrUnsupportedMetricType = errors.New("unsupported metric type")
 
-	// ErrMetricIDMismatch indicates two metrics reference different IDs.
-	ErrMetricIDMismatch = errors.New("metric id mismatch")
-
 	// ErrMetricTypeMismatch indicates two metrics have different types.
 	ErrMetricTypeMismatch = errors.New("metric type mismatch")
 )
