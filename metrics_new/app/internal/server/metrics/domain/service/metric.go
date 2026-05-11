@@ -51,6 +51,15 @@ func (MetricService) MergeMetricsByID(metrics []entity.Metric) ([]entity.Metric,
 	return updatedMetrics, nil
 }
 
+// CollectIDs returns the IDs of the provided metrics in order.
+func (MetricService) CollectIDs(metrics []entity.Metric) []string {
+	ids := make([]string, len(metrics))
+	for i, m := range metrics {
+		ids[i] = m.ID
+	}
+	return ids
+}
+
 // BuildCreateUpdateBatches builds the lists of metrics to create and update.
 func (MetricService) BuildCreateUpdateBatches(
 	existingIDToMetric map[string]entity.Metric,
