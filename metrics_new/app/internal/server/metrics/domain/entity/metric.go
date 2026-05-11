@@ -62,15 +62,7 @@ func (m Metric) ValidateMetricValues() error {
 	return nil
 }
 
-// MatchMetricIDs checks that the receiver ID equals the other ID.
-func (m Metric) MatchMetricIDs(otherID string) error {
-	if m.ID != otherID {
-		return ErrMetricIDMismatch
-	}
-	return nil
-}
-
-// MatchMetricTypes checks that the receiver MType equals otherMType (route, merge, or patch).
+// MatchMetricTypes checks that the receiver MType equals the other MType.
 func (m Metric) MatchMetricTypes(otherMType MetricType) error {
 	if m.MType != otherMType {
 		return ErrMetricTypeMismatch
