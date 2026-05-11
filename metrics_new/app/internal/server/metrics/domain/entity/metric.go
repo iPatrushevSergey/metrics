@@ -62,6 +62,14 @@ func (m Metric) ValidateMetricValues() error {
 	return nil
 }
 
+// ValidateMetricType checks that stored MType matches expected.
+func (m Metric) ValidateMetricType(expected MetricType) error {
+	if m.MType != expected {
+		return ErrMetricTypeMismatch
+	}
+	return nil
+}
+
 // ApplyUpdate merges an incoming metric into the receiver.
 // Counter: sum non-nil deltas; gauge: replace value.
 func (m *Metric) ApplyUpdate(incoming Metric) error {
