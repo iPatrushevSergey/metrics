@@ -62,32 +62,36 @@ func (m Metric) ValidateMetricValues() error {
 	return nil
 }
 
-// ValidateMetricType checks that stored MType matches expected.
-func (m Metric) ValidateMetricType(expected MetricType) error {
-	if m.MType != expected {
+// MatchMetricIDs checks that the receiver ID equals the other ID.
+func (m Metric) MatchMetricIDs(otherID string) error {
+	if m.ID != otherID {
+		return ErrMetricIDMismatch
+	}
+	return nil
+}
+
+// MatchMetricTypes checks that the receiver MType equals otherMType (route, merge, or patch).
+func (m Metric) MatchMetricTypes(otherMType MetricType) error {
+	if m.MType != otherMType {
 		return ErrMetricTypeMismatch
 	}
 	return nil
 }
 
-// ApplyUpdate merges an incoming metric into the receiver.
-// Counter: sum non-nil deltas; gauge: replace value.
-func (m *Metric) ApplyUpdate(incoming Metric) error {
-	if m.ID != incoming.ID || m.MType != incoming.MType {
-		return ErrMetricIdentityMismatch
-	}
-	switch incoming.MType {
+// ApplyUpdate merges other into the receiver. Counter sums non-nil deltas; gauge replaces value.
+func (m *Metric) ApplyUpdate(other Metric) error {
+	switch other.MType {
 	case Counter:
-		if incoming.Delta != nil {
+		if other.Delta != nil {
 			if m.Delta != nil {
-				sum := *m.Delta + *incoming.Delta
+				sum := *m.Delta + *other.Delta
 				m.Delta = &sum
 			} else {
-				m.Delta = incoming.Delta
+				m.Delta = other.Delta
 			}
 		}
 	case Gauge:
-		m.Value = incoming.Value
+		m.Value = other.Value
 	default:
 		return ErrUnsupportedMetricType
 	}
@@ -124,6 +128,9 @@ func MergeMetricsByID(metrics []Metric) ([]Metric, error) {
 			idToMetric[id] = metric
 			metricIDs = append(metricIDs, id)
 			continue
+		}
+		if err := prevMetric.MatchMetricTypes(metric.MType); err != nil {
+			return nil, fmt.Errorf("merge metric %q: %w", id, err)
 		}
 		if err := prevMetric.ApplyUpdate(metric); err != nil {
 			return nil, fmt.Errorf("merge metric %q: %w", id, err)
