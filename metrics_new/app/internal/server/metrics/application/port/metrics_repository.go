@@ -18,7 +18,7 @@ type MetricReader interface {
 type MetricWriter interface {
 	Create(ctx context.Context, metric entity.Metric) error
 	CreateBatch(ctx context.Context, metrics []entity.Metric) error
-	Update(ctx context.Context, id string, metric entity.Metric) error
+	Update(ctx context.Context, metric entity.Metric) error
 	UpdateBatch(ctx context.Context, metrics []entity.Metric) error
 }
 
