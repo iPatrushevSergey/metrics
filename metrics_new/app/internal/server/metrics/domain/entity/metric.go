@@ -107,32 +107,3 @@ func (m Metric) FormatValueAsString() (string, error) {
 		return "", fmt.Errorf("unsupported metric type: %s", m.MType)
 	}
 }
-
-// MergeMetricsByID merges metrics by ID preserving first-seen order.
-func MergeMetricsByID(metrics []Metric) ([]Metric, error) {
-	idToMetric := make(map[string]Metric, len(metrics))
-	metricIDs := make([]string, 0, len(metrics))
-
-	for _, metric := range metrics {
-		id := metric.ID
-		prevMetric, exists := idToMetric[id]
-		if !exists {
-			idToMetric[id] = metric
-			metricIDs = append(metricIDs, id)
-			continue
-		}
-		if err := prevMetric.MatchMetricTypes(metric.MType); err != nil {
-			return nil, fmt.Errorf("merge metric %q: %w", id, err)
-		}
-		if err := prevMetric.ApplyUpdate(metric); err != nil {
-			return nil, fmt.Errorf("merge metric %q: %w", id, err)
-		}
-		idToMetric[id] = prevMetric
-	}
-
-	updatedMetrics := make([]Metric, 0, len(idToMetric))
-	for _, id := range metricIDs {
-		updatedMetrics = append(updatedMetrics, idToMetric[id])
-	}
-	return updatedMetrics, nil
-}
