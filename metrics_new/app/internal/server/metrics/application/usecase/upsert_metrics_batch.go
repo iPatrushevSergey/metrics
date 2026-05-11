@@ -1,0 +1,88 @@
+package usecase
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/service"
+)
+
+// UpsertMetricsBatch creates or updates a batch of metrics.
+type UpsertMetricsBatch struct {
+	metricRepo port.MetricRepository
+	metricSvc  service.MetricService
+}
+
+// NewUpsertMetricsBatch returns the batch upsert use case.
+func NewUpsertMetricsBatch(metricRepo port.MetricRepository, metricSvc service.MetricService) port.UseCase[dto.UpsertMetricsBatchInput, struct{}] {
+	return &UpsertMetricsBatch{metricRepo: metricRepo, metricSvc: metricSvc}
+}
+
+// Execute validates each metric, folds duplicate ids within the request preserving order, then persists.
+func (uc *UpsertMetricsBatch) Execute(ctx context.Context, inDTO dto.UpsertMetricsBatchInput) (struct{}, error) {
+	if len(inDTO.Metrics) == 0 {
+		return struct{}{}, nil
+	}
+
+	metrics := make([]entity.Metric, 0, len(inDTO.Metrics))
+	for _, rawMetric := range inDTO.Metrics {
+		newMetric := entity.Metric{ID: rawMetric.ID, MType: rawMetric.MType, Delta: rawMetric.Delta, Value: rawMetric.Value}
+		if err := newMetric.ValidateMetricValues(); err != nil {
+			if errors.Is(err, entity.ErrUnsupportedMetricType) {
+				return struct{}{}, application.ErrBadMetricType
+			}
+			if errors.Is(err, entity.ErrMissingCounterDelta) || errors.Is(err, entity.ErrMissingGaugeValue) {
+				return struct{}{}, application.ErrBadMetricValue
+			}
+			return struct{}{}, err
+		}
+		metrics = append(metrics, newMetric)
+	}
+
+	mergedMetrics, err := uc.metricSvc.MergeMetricsByID(metrics)
+	if err != nil {
+		if errors.Is(err, entity.ErrMetricTypeMismatch) {
+			return struct{}{}, application.ErrNotFound
+		}
+		if errors.Is(err, entity.ErrUnsupportedMetricType) {
+			return struct{}{}, application.ErrBadMetricType
+		}
+		return struct{}{}, err
+	}
+
+	metricIDs := uc.metricSvc.CollectIDs(mergedMetrics)
+
+	existingIDToMetric, err := uc.metricRepo.GetByIDs(ctx, metricIDs)
+	if err != nil {
+		return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+	}
+
+	createList, updateList, err := uc.metricSvc.BuildCreateUpdateBatches(existingIDToMetric, mergedMetrics)
+	if err != nil {
+		if errors.Is(err, entity.ErrMetricTypeMismatch) {
+			return struct{}{}, application.ErrNotFound
+		}
+		if errors.Is(err, entity.ErrUnsupportedMetricType) {
+			return struct{}{}, application.ErrBadMetricType
+		}
+		return struct{}{}, err
+	}
+
+	if len(createList) > 0 {
+		if err := uc.metricRepo.CreateBatch(ctx, createList); err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
+	}
+	if len(updateList) > 0 {
+		if err := uc.metricRepo.UpdateBatch(ctx, updateList); err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
+	}
+
+	return struct{}{}, nil
+}
