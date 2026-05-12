@@ -3,6 +3,7 @@ package service
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
@@ -58,6 +59,27 @@ func (MetricService) CollectIDs(metrics []entity.Metric) []string {
 		ids[i] = m.ID
 	}
 	return ids
+}
+
+// FormatMetricsValue collects metrics from the map, orders rows by ID ascending, and formats each value.
+func (MetricService) FormatMetricsValue(idToMetric map[string]entity.Metric) ([]entity.MetricWithValue, error) {
+	ids := make([]string, 0, len(idToMetric))
+	for id := range idToMetric {
+		ids = append(ids, id)
+	}
+
+	sort.Strings(ids)
+
+	metricsWithValue := make([]entity.MetricWithValue, 0, len(ids))
+	for _, id := range ids {
+		metric := idToMetric[id]
+		formattedValue, err := metric.FormatValueAsString()
+		if err != nil {
+			return nil, fmt.Errorf("format metric %q: %w", id, err)
+		}
+		metricsWithValue = append(metricsWithValue, entity.MetricWithValue{ID: id, FormattedValue: formattedValue})
+	}
+	return metricsWithValue, nil
 }
 
 // BuildCreateUpdateBatches builds the lists of metrics to create and update.
