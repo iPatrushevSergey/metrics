@@ -23,6 +23,12 @@ type Metric struct {
 	Value *float64
 }
 
+// MetricWithValue pairs a metric ID with its formatted value.
+type MetricWithValue struct {
+	ID             string
+	FormattedValue string
+}
+
 // NewMetric builds a metric.
 func NewMetric(mType MetricType, id, value string) (Metric, error) {
 	m := Metric{ID: strings.TrimSpace(id), MType: mType}
