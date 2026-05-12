@@ -32,26 +32,31 @@ func (uc *GetMetric) Execute(ctx context.Context, inDTO dto.GetMetricInput) (dto
 
 	metric, err := uc.metricReader.GetByID(ctx, inDTO.ID)
 	if err != nil {
-		if errors.Is(err, application.ErrNotFound) {
+		switch {
+		case errors.Is(err, application.ErrNotFound):
 			return dto.MetricOutput{}, application.ErrNotFound
+		default:
+			return dto.MetricOutput{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 		}
-		return dto.MetricOutput{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 	}
 	if err := metric.MatchMetricTypes(mType); err != nil {
-		if errors.Is(err, entity.ErrMetricTypeMismatch) {
+		switch {
+		case errors.Is(err, entity.ErrMetricTypeMismatch):
 			return dto.MetricOutput{}, application.ErrNotFound
+		default:
+			return dto.MetricOutput{}, err
 		}
-		return dto.MetricOutput{}, err
 	}
 
 	if err := metric.ValidateMetricValues(); err != nil {
-		if errors.Is(err, entity.ErrUnsupportedMetricType) {
+		switch {
+		case errors.Is(err, entity.ErrUnsupportedMetricType):
 			return dto.MetricOutput{}, application.ErrBadMetricType
-		}
-		if errors.Is(err, entity.ErrMissingCounterDelta) || errors.Is(err, entity.ErrMissingGaugeValue) {
+		case errors.Is(err, entity.ErrMissingCounterDelta), errors.Is(err, entity.ErrMissingGaugeValue):
 			return dto.MetricOutput{}, application.ErrBadMetricValue
+		default:
+			return dto.MetricOutput{}, err
 		}
-		return dto.MetricOutput{}, err
 	}
 
 	return dto.MetricOutput{
