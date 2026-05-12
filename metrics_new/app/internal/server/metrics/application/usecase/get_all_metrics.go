@@ -7,33 +7,38 @@ import (
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/service"
 )
 
-// GetAllMetrics loads all metrics.
+// GetAllMetrics loads all metrics and builds a sorted list for presentation.
 type GetAllMetrics struct {
 	metricReader port.MetricReader
+	metricSvc    service.MetricService
 }
 
 // NewGetAllMetrics returns the get all metrics use case.
-func NewGetAllMetrics(metricReader port.MetricReader) port.UseCase[struct{}, map[string]dto.MetricOutput] {
-	return &GetAllMetrics{metricReader: metricReader}
+func NewGetAllMetrics(metricReader port.MetricReader, metricSvc service.MetricService) port.UseCase[struct{}, []dto.MetricForDisplayOutput] {
+	return &GetAllMetrics{metricReader: metricReader, metricSvc: metricSvc}
 }
 
-// Execute loads all metrics and maps them keyed by ID.
-func (uc *GetAllMetrics) Execute(ctx context.Context, _ struct{}) (map[string]dto.MetricOutput, error) {
-	allMetrics, err := uc.metricReader.GetAll(ctx)
+// Execute loads all metrics, sorts by id, formats each value for display.
+func (uc *GetAllMetrics) Execute(ctx context.Context, _ struct{}) ([]dto.MetricForDisplayOutput, error) {
+	idToMetric, err := uc.metricReader.GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", application.ErrInternal, err)
 	}
 
-	nameToMetric := make(map[string]dto.MetricOutput, len(allMetrics))
-	for id, metric := range allMetrics {
-		nameToMetric[id] = dto.MetricOutput{
-			ID:    metric.ID,
-			MType: string(metric.MType),
-			Delta: metric.Delta,
-			Value: metric.Value,
+	metricsWithValue, err := uc.metricSvc.FormatMetricsValue(idToMetric)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", application.ErrInternal, err)
+	}
+
+	metricsForDisplay := make([]dto.MetricForDisplayOutput, len(metricsWithValue))
+	for i := range metricsWithValue {
+		metricsForDisplay[i] = dto.MetricForDisplayOutput{
+			MetricID:    metricsWithValue[i].ID,
+			MetricValue: metricsWithValue[i].FormattedValue,
 		}
 	}
-	return nameToMetric, nil
+	return metricsForDisplay, nil
 }
