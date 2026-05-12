@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
@@ -31,28 +32,36 @@ func (uc *UpsertMetricsBatch) Execute(ctx context.Context, inDTO dto.UpsertMetri
 
 	metrics := make([]entity.Metric, 0, len(inDTO.Metrics))
 	for _, rawMetric := range inDTO.Metrics {
-		newMetric := entity.Metric{ID: rawMetric.ID, MType: rawMetric.MType, Delta: rawMetric.Delta, Value: rawMetric.Value}
+		mType, err := uc.metricSvc.CheckMetricType(strings.TrimSpace(rawMetric.MType))
+		if err != nil {
+			return struct{}{}, application.ErrBadMetricType
+		}
+
+		newMetric := entity.Metric{ID: rawMetric.ID, MType: mType, Delta: rawMetric.Delta, Value: rawMetric.Value}
+
 		if err := newMetric.ValidateMetricValues(); err != nil {
-			if errors.Is(err, entity.ErrUnsupportedMetricType) {
+			switch {
+			case errors.Is(err, entity.ErrUnsupportedMetricType):
 				return struct{}{}, application.ErrBadMetricType
-			}
-			if errors.Is(err, entity.ErrMissingCounterDelta) || errors.Is(err, entity.ErrMissingGaugeValue) {
+			case errors.Is(err, entity.ErrMissingCounterDelta), errors.Is(err, entity.ErrMissingGaugeValue):
 				return struct{}{}, application.ErrBadMetricValue
+			default:
+				return struct{}{}, err
 			}
-			return struct{}{}, err
 		}
 		metrics = append(metrics, newMetric)
 	}
 
 	mergedMetrics, err := uc.metricSvc.MergeMetricsByID(metrics)
 	if err != nil {
-		if errors.Is(err, entity.ErrMetricTypeMismatch) {
+		switch {
+		case errors.Is(err, entity.ErrMetricTypeMismatch):
 			return struct{}{}, application.ErrNotFound
-		}
-		if errors.Is(err, entity.ErrUnsupportedMetricType) {
+		case errors.Is(err, entity.ErrUnsupportedMetricType):
 			return struct{}{}, application.ErrBadMetricType
+		default:
+			return struct{}{}, err
 		}
-		return struct{}{}, err
 	}
 
 	metricIDs := uc.metricSvc.CollectIDs(mergedMetrics)
@@ -64,13 +73,14 @@ func (uc *UpsertMetricsBatch) Execute(ctx context.Context, inDTO dto.UpsertMetri
 
 	createList, updateList, err := uc.metricSvc.BuildCreateUpdateBatches(existingIDToMetric, mergedMetrics)
 	if err != nil {
-		if errors.Is(err, entity.ErrMetricTypeMismatch) {
+		switch {
+		case errors.Is(err, entity.ErrMetricTypeMismatch):
 			return struct{}{}, application.ErrNotFound
-		}
-		if errors.Is(err, entity.ErrUnsupportedMetricType) {
+		case errors.Is(err, entity.ErrUnsupportedMetricType):
 			return struct{}{}, application.ErrBadMetricType
+		default:
+			return struct{}{}, err
 		}
-		return struct{}{}, err
 	}
 
 	if len(createList) > 0 {
