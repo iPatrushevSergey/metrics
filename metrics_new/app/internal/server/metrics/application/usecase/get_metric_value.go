@@ -32,16 +32,20 @@ func (uc *GetMetricValue) Execute(ctx context.Context, inDTO dto.GetMetricValueI
 
 	metric, err := uc.metricReader.GetByID(ctx, inDTO.ID)
 	if err != nil {
-		if errors.Is(err, application.ErrNotFound) {
+		switch {
+		case errors.Is(err, application.ErrNotFound):
 			return "", application.ErrNotFound
+		default:
+			return "", fmt.Errorf("%w: %v", application.ErrInternal, err)
 		}
-		return "", fmt.Errorf("%w: %v", application.ErrInternal, err)
 	}
 	if err := metric.MatchMetricTypes(mType); err != nil {
-		if errors.Is(err, entity.ErrMetricTypeMismatch) {
+		switch {
+		case errors.Is(err, entity.ErrMetricTypeMismatch):
 			return "", application.ErrNotFound
+		default:
+			return "", err
 		}
-		return "", err
 	}
 
 	value, err := metric.FormatValueAsString()
