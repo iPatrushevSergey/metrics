@@ -14,11 +14,13 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/repository/postgres"
 )
 
 type Config struct {
-	Logger logger.Config `mapstructure:"logger"`
-	Server Server        `mapstructure:"server"`
+	Logger logger.Config   `mapstructure:"logger"`
+	Server Server          `mapstructure:"server"`
+	DB     postgres.Config `mapstructure:"database"`
 }
 
 // Server holds server settings.
@@ -28,7 +30,6 @@ type Server struct {
 	ShutdownTimeout  time.Duration `mapstructure:"shutdown_timeout"`
 	FileStoragePath  string        `mapstructure:"store_file"`
 	Restore          bool          `mapstructure:"restore"`
-	DatabaseDSN      string        `mapstructure:"database_dsn"`
 	EnableRetry      bool          `mapstructure:"enable_retry"`
 	Key              string        `mapstructure:"key"`
 	CryptoKey        string        `mapstructure:"crypto_key"`
@@ -183,13 +184,22 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.shutdown_timeout", "10s")
 	v.SetDefault("server.store_file", "metrics.json")
 	v.SetDefault("server.restore", true)
-	v.SetDefault("server.database_dsn", "")
 	v.SetDefault("server.enable_retry", true)
 	v.SetDefault("server.key", "")
 	v.SetDefault("server.crypto_key", "")
 	v.SetDefault("server.audit_file", "")
 	v.SetDefault("server.audit_url", "")
 	v.SetDefault("server.audit_http_timeout", "2s")
+
+	v.SetDefault("database.uri", "")
+	v.SetDefault("database.max_conns", 25)
+	v.SetDefault("database.min_conns", 5)
+	v.SetDefault("database.max_conn_life", "1h")
+	v.SetDefault("database.max_conn_idle", "30m")
+	v.SetDefault("database.health_check", "1m")
+	v.SetDefault("database.retry.max_retries", 3)
+	v.SetDefault("database.retry.base_delay", "100ms")
+	v.SetDefault("database.retry.max_delay", "2s")
 }
 
 // bindEnv binds the environment variables to the configuration.
@@ -203,13 +213,22 @@ func bindEnv(v *viper.Viper) {
 	_ = v.BindEnv("server.shutdown_timeout", "SHUTDOWN_TIMEOUT")
 	_ = v.BindEnv("server.store_file", "FILE_STORAGE_PATH")
 	_ = v.BindEnv("server.restore", "RESTORE")
-	_ = v.BindEnv("server.database_dsn", "DATABASE_DSN")
 	_ = v.BindEnv("server.enable_retry", "ENABLE_RETRY")
 	_ = v.BindEnv("server.key", "KEY")
 	_ = v.BindEnv("server.crypto_key", "CRYPTO_KEY")
 	_ = v.BindEnv("server.audit_file", "AUDIT_FILE")
 	_ = v.BindEnv("server.audit_url", "AUDIT_URL")
 	_ = v.BindEnv("server.audit_http_timeout", "AUDIT_HTTP_TIMEOUT")
+
+	_ = v.BindEnv("database.uri", "DATABASE_DSN")
+	_ = v.BindEnv("database.max_conns", "DB_MAX_CONNS")
+	_ = v.BindEnv("database.min_conns", "DB_MIN_CONNS")
+	_ = v.BindEnv("database.max_conn_life", "DB_MAX_CONN_LIFE")
+	_ = v.BindEnv("database.max_conn_idle", "DB_MAX_CONN_IDLE")
+	_ = v.BindEnv("database.health_check", "DB_HEALTH_CHECK")
+	_ = v.BindEnv("database.retry.max_retries", "DB_RETRY_MAX_RETRIES")
+	_ = v.BindEnv("database.retry.base_delay", "DB_RETRY_BASE_DELAY")
+	_ = v.BindEnv("database.retry.max_delay", "DB_RETRY_MAX_DELAY")
 }
 
 // applyFlagsWhenEnvUnset sets viper from CLI flags only when the matching env var is absent (env beats flags).
@@ -219,7 +238,6 @@ func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
 		{"logger.level", "LOG_LEVEL", "log"},
 		{"server.store_interval", "STORE_INTERVAL", "store-interval"},
 		{"server.store_file", "FILE_STORAGE_PATH", "store-file"},
-		{"server.database_dsn", "DATABASE_DSN", "database-dsn"},
 		{"server.key", "KEY", "key"},
 		{"server.crypto_key", "CRYPTO_KEY", "crypto-key"},
 		{"server.audit_file", "AUDIT_FILE", "audit-file"},
@@ -238,6 +256,14 @@ func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
 			return fmt.Errorf("flag %s: %w", row.flag, err)
 		}
 		v.Set(row.key, val)
+	}
+
+	if _, ok := os.LookupEnv("DATABASE_DSN"); !ok && fs.Changed("database-dsn") {
+		dsnVal, err := fs.GetString("database-dsn")
+		if err != nil {
+			return fmt.Errorf("flag database-dsn: %w", err)
+		}
+		v.Set("database.uri", dsnVal)
 	}
 
 	if _, ok := os.LookupEnv("RESTORE"); !ok && fs.Changed("restore") {
@@ -268,10 +294,11 @@ func finalizeConfig(cfg *Config) error {
 
 	s.Key = strings.TrimSpace(s.Key)
 	s.CryptoKey = strings.TrimSpace(s.CryptoKey)
-	s.DatabaseDSN = strings.TrimSpace(s.DatabaseDSN)
 	s.FileStoragePath = strings.TrimSpace(s.FileStoragePath)
 	s.AuditFilePath = strings.TrimSpace(s.AuditFilePath)
 	s.AuditURL = strings.TrimSpace(s.AuditURL)
+
+	cfg.DB.Pool.URI = strings.TrimSpace(cfg.DB.Pool.URI)
 
 	if s.StoreInterval < 0 {
 		return fmt.Errorf("store interval must be >= 0, got %s", s.StoreInterval)
