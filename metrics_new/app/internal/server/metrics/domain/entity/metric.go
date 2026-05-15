@@ -21,6 +21,7 @@ type Metric struct {
 	MType MetricType
 	Delta *int64
 	Value *float64
+	Hash  string
 }
 
 // MetricWithValue pairs a metric ID with its formatted value.
