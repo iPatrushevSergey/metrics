@@ -174,7 +174,7 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 		MType: reqDTO.MType,
 		Delta: reqDTO.Delta,
 		Value: reqDTO.Value,
-		Hash:  reqDTO.Hash,
+		Hash:  strings.TrimSpace(reqDTO.Hash),
 	}
 
 	if _, err := h.useCases.UpsertMetricUseCase().Execute(ctx, inDTO); err != nil {
