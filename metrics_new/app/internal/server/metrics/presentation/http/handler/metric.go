@@ -105,6 +105,7 @@ func (h *MetricHandler) GetJSON(c *gin.Context) {
 		MType: metric.MType,
 		Delta: metric.Delta,
 		Value: metric.Value,
+		Hash:  metric.Hash,
 	})
 }
 
@@ -173,6 +174,7 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 		MType: reqDTO.MType,
 		Delta: reqDTO.Delta,
 		Value: reqDTO.Value,
+		Hash:  reqDTO.Hash,
 	}
 
 	if _, err := h.useCases.UpsertMetricUseCase().Execute(ctx, inDTO); err != nil {
@@ -209,6 +211,7 @@ func (h *MetricHandler) UpdatesJSON(c *gin.Context) {
 			MType: reqDTO.MType,
 			Delta: reqDTO.Delta,
 			Value: reqDTO.Value,
+			Hash:  strings.TrimSpace(reqDTO.Hash),
 		})
 	}
 
