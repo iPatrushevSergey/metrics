@@ -30,7 +30,13 @@ func (uc *UpsertMetric) Execute(ctx context.Context, inDTO dto.UpsertMetricInput
 		return struct{}{}, application.ErrBadMetricType
 	}
 
-	newMetric := entity.Metric{ID: inDTO.ID, MType: mType, Delta: inDTO.Delta, Value: inDTO.Value}
+	newMetric := entity.Metric{
+		ID:    inDTO.ID,
+		MType: mType,
+		Delta: inDTO.Delta,
+		Value: inDTO.Value,
+		Hash:  inDTO.Hash,
+	}
 
 	if err := newMetric.ValidateMetricValues(); err != nil {
 		switch {
