@@ -135,6 +135,7 @@ func cloneMetric(m entity.Metric) entity.Metric {
 	out := entity.Metric{
 		ID:    m.ID,
 		MType: m.MType,
+		Hash:  m.Hash,
 	}
 	if m.Delta != nil {
 		d := *m.Delta
