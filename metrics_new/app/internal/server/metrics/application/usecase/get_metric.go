@@ -64,5 +64,6 @@ func (uc *GetMetric) Execute(ctx context.Context, inDTO dto.GetMetricInput) (dto
 		MType: string(metric.MType),
 		Delta: metric.Delta,
 		Value: metric.Value,
+		Hash:  metric.Hash,
 	}, nil
 }
