@@ -37,7 +37,13 @@ func (uc *UpsertMetricsBatch) Execute(ctx context.Context, inDTO dto.UpsertMetri
 			return struct{}{}, application.ErrBadMetricType
 		}
 
-		newMetric := entity.Metric{ID: rawMetric.ID, MType: mType, Delta: rawMetric.Delta, Value: rawMetric.Value}
+		newMetric := entity.Metric{
+			ID:    rawMetric.ID,
+			MType: mType,
+			Delta: rawMetric.Delta,
+			Value: rawMetric.Value,
+			Hash:  rawMetric.Hash,
+		}
 
 		if err := newMetric.ValidateMetricValues(); err != nil {
 			switch {
