@@ -18,6 +18,7 @@ type MetricOutput struct {
 	MType string
 	Delta *int64
 	Value *float64
+	Hash  string
 }
 
 // MetricForDisplayOutput is one metric for presentation.
@@ -39,6 +40,7 @@ type UpsertMetricInput struct {
 	MType string
 	Delta *int64
 	Value *float64
+	Hash  string
 }
 
 // UpsertMetricsBatchInput is a batch upsert.
