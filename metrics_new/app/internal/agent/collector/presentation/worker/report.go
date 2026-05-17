@@ -9,8 +9,8 @@ import (
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/presentation/factory"
 )
 
-// ReportLoop runs the report use case on each tick.
-type ReportLoop struct {
+// ReportWorker runs ReportBatchTick on each interval.
+type ReportWorker struct {
 	sendCtx  context.Context
 	useCases factory.UseCaseFactory
 	log      port.Logger
@@ -18,14 +18,14 @@ type ReportLoop struct {
 	sendsWg  sync.WaitGroup
 }
 
-// NewReportLoop initializes the report loop.
-func NewReportLoop(
+// NewReportWorker creates a report background worker.
+func NewReportWorker(
 	sendCtx context.Context,
 	useCases factory.UseCaseFactory,
 	log port.Logger,
 	interval time.Duration,
-) *ReportLoop {
-	return &ReportLoop{
+) *ReportWorker {
+	return &ReportWorker{
 		sendCtx:  sendCtx,
 		useCases: useCases,
 		log:      log,
@@ -33,20 +33,21 @@ func NewReportLoop(
 	}
 }
 
-// WaitSendsWg waits until all report goroutines finish.
-func (w *ReportLoop) WaitSendsWg() {
+// Wait blocks until all in-flight report sends finish.
+func (w *ReportWorker) Wait() {
 	w.sendsWg.Wait()
 }
 
-// RunReportTickerLoop runs the report use case on each tick until pollCtx is canceled.
-func (w *ReportLoop) RunReportTickerLoop(pollCtx context.Context) {
+// Run executes the worker loop.
+func (w *ReportWorker) Run(ctx context.Context) {
+	w.log.Info("report worker started", "interval", w.interval.String())
+
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
-	w.log.Info("report worker started", "interval", w.interval.String())
 	for {
 		select {
-		case <-pollCtx.Done():
+		case <-ctx.Done():
 			w.log.Info("report worker stopped")
 			return
 		case <-ticker.C:
