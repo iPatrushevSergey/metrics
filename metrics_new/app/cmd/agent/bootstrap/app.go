@@ -100,13 +100,12 @@ func (a *AgentApp) Run(shutdownCtx context.Context) error {
 		WithReportInterval(a.cfg.Agent.ReportInterval),
 	)
 
-	go worker.RunPoolTickerLoop(pollCtx, ucf.PollRuntimeTick(), "poll_runtime", a.log, a.cfg.Agent.PollInterval)
-	go worker.RunPoolTickerLoop(pollCtx, ucf.PollGopsutilTick(), "poll_gopsutil", a.log, a.cfg.Agent.PollInterval)
+	go worker.NewPollRuntimeWorker(ucf, a.log, a.cfg.Agent.PollInterval).Run(pollCtx)
+	go worker.NewPollGopsutilWorker(ucf, a.log, a.cfg.Agent.PollInterval).Run(pollCtx)
 
-	report := worker.NewReportLoop(sendCtx, ucf.ReportBatchTick(), a.log, a.cfg.Agent.ReportInterval)
-	report.RunReportTickerLoop(pollCtx)
-
-	report.WaitSendsWg()
+	report := worker.NewReportWorker(sendCtx, ucf, a.log, a.cfg.Agent.ReportInterval)
+	report.Run(pollCtx)
+	report.Wait()
 
 	if bufferedMetricsGateway != nil {
 		bufferedMetricsGateway.Stop()
