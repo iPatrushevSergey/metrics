@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/presentation/factory"
 )
 
 // ReportLoop runs the report use case on each tick.
 type ReportLoop struct {
 	sendCtx  context.Context
-	uc       port.UseCase[struct{}, int]
+	useCases factory.UseCaseFactory
 	log      port.Logger
 	interval time.Duration
 	sendsWg  sync.WaitGroup
@@ -20,13 +21,13 @@ type ReportLoop struct {
 // NewReportLoop initializes the report loop.
 func NewReportLoop(
 	sendCtx context.Context,
-	uc port.UseCase[struct{}, int],
+	useCases factory.UseCaseFactory,
 	log port.Logger,
 	interval time.Duration,
 ) *ReportLoop {
 	return &ReportLoop{
 		sendCtx:  sendCtx,
-		uc:       uc,
+		useCases: useCases,
 		log:      log,
 		interval: interval,
 	}
@@ -53,7 +54,7 @@ func (w *ReportLoop) RunReportTickerLoop(pollCtx context.Context) {
 			w.sendsWg.Add(1)
 			go func() {
 				defer w.sendsWg.Done()
-				if _, err := w.uc.Execute(w.sendCtx, struct{}{}); err != nil {
+				if _, err := w.useCases.ReportBatchTick().Execute(w.sendCtx, struct{}{}); err != nil {
 					w.log.Error("report tick failed", "error", err)
 				}
 			}()
