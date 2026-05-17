@@ -73,8 +73,7 @@ func (r *MetricMemoryRepository) Create(_ context.Context, metric entity.Metric)
 	return nil
 }
 
-// CreateBatch creates multiple metrics.
-func (r *MetricMemoryRepository) CreateBatch(_ context.Context, metrics []entity.Metric) error {
+func (r *MetricMemoryRepository) createBatch(_ context.Context, metrics []entity.Metric) error {
 	if len(metrics) == 0 {
 		return nil
 	}
@@ -92,6 +91,26 @@ func (r *MetricMemoryRepository) CreateBatch(_ context.Context, metrics []entity
 	return nil
 }
 
+// CreateBatchWithParams creates multiple metrics.
+func (r *MetricMemoryRepository) CreateBatchWithParams(ctx context.Context, metrics []entity.Metric) error {
+	return r.createBatch(ctx, metrics)
+}
+
+// CreateBatchWithUnnest creates multiple metrics.
+func (r *MetricMemoryRepository) CreateBatchWithUnnest(ctx context.Context, metrics []entity.Metric) error {
+	return r.createBatch(ctx, metrics)
+}
+
+// CreateBatchWithCopy creates multiple metrics.
+func (r *MetricMemoryRepository) CreateBatchWithCopy(ctx context.Context, metrics []entity.Metric) error {
+	return r.createBatch(ctx, metrics)
+}
+
+// CreateBatchWithPrepare creates multiple metrics.
+func (r *MetricMemoryRepository) CreateBatchWithPrepare(ctx context.Context, metrics []entity.Metric) error {
+	return r.createBatch(ctx, metrics)
+}
+
 // Update replaces an existing metric.
 func (r *MetricMemoryRepository) Update(_ context.Context, metric entity.Metric) error {
 	r.mu.Lock()
@@ -106,8 +125,7 @@ func (r *MetricMemoryRepository) Update(_ context.Context, metric entity.Metric)
 	return nil
 }
 
-// UpdateBatch updates multiple metrics.
-func (r *MetricMemoryRepository) UpdateBatch(_ context.Context, metrics []entity.Metric) error {
+func (r *MetricMemoryRepository) updateBatch(_ context.Context, metrics []entity.Metric) error {
 	if len(metrics) == 0 {
 		return nil
 	}
@@ -123,6 +141,26 @@ func (r *MetricMemoryRepository) UpdateBatch(_ context.Context, metrics []entity
 	}
 
 	return nil
+}
+
+// UpdateBatchWithParams updates multiple metrics.
+func (r *MetricMemoryRepository) UpdateBatchWithParams(ctx context.Context, metrics []entity.Metric) error {
+	return r.updateBatch(ctx, metrics)
+}
+
+// UpdateBatchWithUnnest updates multiple metrics.
+func (r *MetricMemoryRepository) UpdateBatchWithUnnest(ctx context.Context, metrics []entity.Metric) error {
+	return r.updateBatch(ctx, metrics)
+}
+
+// UpdateBatchWithCopy updates multiple metrics.
+func (r *MetricMemoryRepository) UpdateBatchWithCopy(ctx context.Context, metrics []entity.Metric) error {
+	return r.updateBatch(ctx, metrics)
+}
+
+// UpdateBatchWithPrepare updates multiple metrics.
+func (r *MetricMemoryRepository) UpdateBatchWithPrepare(ctx context.Context, metrics []entity.Metric) error {
+	return r.updateBatch(ctx, metrics)
 }
 
 // Ping reports readiness of the storage.
