@@ -9,9 +9,10 @@ import (
 
 // MetricUseCaseParams contains dependencies required to build metrics use cases.
 type MetricUseCasesParams struct {
-	MetricRepo port.MetricRepository
-	MetricSvc  service.MetricService
-	Transactor port.Transactor
+	MetricRepo   port.MetricRepository
+	MetricSvc    service.MetricService
+	Transactor   port.Transactor
+	MetricFileRepo port.MetricFileRepository
 }
 
 // MetricUseCases holds metrics module use cases exposed to the composition root.
@@ -30,9 +31,9 @@ func NewMetricUseCases(p MetricUseCasesParams) *MetricUseCases {
 	return &MetricUseCases{
 		GetMetricValue:     usecase.NewGetMetricValue(p.MetricRepo, p.MetricSvc),
 		GetMetric:          usecase.NewGetMetric(p.MetricRepo, p.MetricSvc),
-		UpdateMetric:       usecase.NewUpdateMetric(p.MetricRepo, p.MetricSvc),
-		UpsertMetric:       usecase.NewUpsertMetric(p.MetricRepo, p.MetricSvc),
-		UpsertMetricsBatch: usecase.NewUpsertMetricsBatch(p.MetricRepo, p.MetricSvc, p.Transactor),
+		UpdateMetric:       usecase.NewUpdateMetric(p.MetricRepo, p.MetricSvc, p.MetricFileRepo),
+		UpsertMetric:       usecase.NewUpsertMetric(p.MetricRepo, p.MetricSvc, p.MetricFileRepo),
+		UpsertMetricsBatch: usecase.NewUpsertMetricsBatch(p.MetricRepo, p.MetricSvc, p.Transactor, p.MetricFileRepo),
 		GetAllMetrics:      usecase.NewGetAllMetrics(p.MetricRepo, p.MetricSvc),
 		PingDB:             usecase.NewPingDB(p.MetricRepo),
 	}
