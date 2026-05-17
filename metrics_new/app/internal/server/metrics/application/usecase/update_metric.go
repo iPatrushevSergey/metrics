@@ -15,12 +15,17 @@ import (
 // UpdateMetric creates or updates a metric.
 type UpdateMetric struct {
 	metricRepo port.MetricRepository
+	metricFileRepo port.MetricFileRepository
 	metricSvc  service.MetricService
 }
 
 // NewUpdateMetric returns the update metric use case.
-func NewUpdateMetric(metricRepo port.MetricRepository, metricSvc service.MetricService) port.UseCase[dto.UpdateMetricInput, struct{}] {
-	return &UpdateMetric{metricRepo: metricRepo, metricSvc: metricSvc}
+func NewUpdateMetric(
+	metricRepo port.MetricRepository,
+	metricSvc service.MetricService,
+	metricFileRepo port.MetricFileRepository,
+) port.UseCase[dto.UpdateMetricInput, struct{}] {
+	return &UpdateMetric{metricRepo: metricRepo, metricFileRepo: metricFileRepo, metricSvc: metricSvc}
 }
 
 // Execute loads the existing metric if any, validates the input, merges the values, creates or updates the metric.
@@ -43,6 +48,15 @@ func (uc *UpdateMetric) Execute(ctx context.Context, inDTO dto.UpdateMetricInput
 	if errors.Is(err, application.ErrNotFound) {
 		if err := uc.metricRepo.Create(ctx, newMetric); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
+		if uc.metricFileRepo != nil {
+			metrics, err := uc.metricRepo.GetAll(ctx)
+			if err != nil {
+				return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+			}
+			if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
+				return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+			}
 		}
 		return struct{}{}, nil
 	}
@@ -67,6 +81,15 @@ func (uc *UpdateMetric) Execute(ctx context.Context, inDTO dto.UpdateMetricInput
 
 	if err := uc.metricRepo.Update(ctx, existingMetric); err != nil {
 		return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+	}
+	if uc.metricFileRepo != nil {
+		metrics, err := uc.metricRepo.GetAll(ctx)
+		if err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
+		if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
 	}
 	return struct{}{}, nil
 }
