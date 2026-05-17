@@ -16,6 +16,7 @@ import (
 // UpsertMetricsBatch creates or updates a batch of metrics.
 type UpsertMetricsBatch struct {
 	metricRepo port.MetricRepository
+	metricFileRepo port.MetricFileRepository
 	metricSvc  service.MetricService
 	transactor port.Transactor
 }
@@ -25,8 +26,14 @@ func NewUpsertMetricsBatch(
 	metricRepo port.MetricRepository,
 	metricSvc service.MetricService,
 	transactor port.Transactor,
+	metricFileRepo port.MetricFileRepository,
 ) port.UseCase[dto.UpsertMetricsBatchInput, struct{}] {
-	return &UpsertMetricsBatch{metricRepo: metricRepo, metricSvc: metricSvc, transactor: transactor}
+	return &UpsertMetricsBatch{
+		metricRepo:     metricRepo,
+		metricFileRepo: metricFileRepo,
+		metricSvc:  metricSvc,
+		transactor: transactor,
+	}
 }
 
 // Execute validates each metric, folds duplicate ids within the request preserving order, then persists.
@@ -113,6 +120,16 @@ func (uc *UpsertMetricsBatch) Execute(ctx context.Context, inDTO dto.UpsertMetri
 	})
 	if err != nil {
 		return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+	}
+
+	if uc.metricFileRepo != nil {
+		metrics, err := uc.metricRepo.GetAll(ctx)
+		if err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
+		if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
 	}
 
 	return struct{}{}, nil
