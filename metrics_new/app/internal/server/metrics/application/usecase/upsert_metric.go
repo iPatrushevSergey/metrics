@@ -15,12 +15,17 @@ import (
 // UpsertMetric creates or updates a metric.
 type UpsertMetric struct {
 	metricRepo port.MetricRepository
+	metricFileRepo port.MetricFileRepository
 	metricSvc  service.MetricService
 }
 
 // NewUpsertMetric returns the upsert metric use case.
-func NewUpsertMetric(metricRepo port.MetricRepository, metricSvc service.MetricService) port.UseCase[dto.UpsertMetricInput, struct{}] {
-	return &UpsertMetric{metricRepo: metricRepo, metricSvc: metricSvc}
+func NewUpsertMetric(
+	metricRepo port.MetricRepository,
+	metricSvc service.MetricService,
+	metricFileRepo port.MetricFileRepository,
+) port.UseCase[dto.UpsertMetricInput, struct{}] {
+	return &UpsertMetric{metricRepo: metricRepo, metricFileRepo: metricFileRepo, metricSvc: metricSvc}
 }
 
 // Execute validates input, loads existing row if any, merges, creates or updates.
@@ -58,6 +63,15 @@ func (uc *UpsertMetric) Execute(ctx context.Context, inDTO dto.UpsertMetricInput
 		if err := uc.metricRepo.Create(ctx, newMetric); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 		}
+		if uc.metricFileRepo != nil {
+			metrics, err := uc.metricRepo.GetAll(ctx)
+			if err != nil {
+				return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+			}
+			if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
+				return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+			}
+		}
 		return struct{}{}, nil
 	}
 
@@ -81,6 +95,15 @@ func (uc *UpsertMetric) Execute(ctx context.Context, inDTO dto.UpsertMetricInput
 
 	if err := uc.metricRepo.Update(ctx, existingMetric); err != nil {
 		return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+	}
+	if uc.metricFileRepo != nil {
+		metrics, err := uc.metricRepo.GetAll(ctx)
+		if err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
+		if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
+			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
+		}
 	}
 	return struct{}{}, nil
 }
