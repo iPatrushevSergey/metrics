@@ -13,6 +13,7 @@ import (
 	appdto "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
 	httpdto "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/http/dto"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
 )
 
 const metricsHTMLTemplate = `
@@ -33,12 +34,12 @@ var metricsTemplate = template.Must(template.New("metrics").Parse(metricsHTMLTem
 
 // MetricHandler serves the metrics API.
 type MetricHandler struct {
-	useCases UseCaseFactory
+	useCases factory.UseCaseFactory
 	log      port.Logger
 }
 
 // NewMetricHandler constructs the handler with injected use cases.
-func NewMetricHandler(uc UseCaseFactory, log port.Logger) *MetricHandler {
+func NewMetricHandler(uc factory.UseCaseFactory, log port.Logger) *MetricHandler {
 	return &MetricHandler{useCases: uc, log: log}
 }
 
