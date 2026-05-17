@@ -82,9 +82,10 @@ func (f *useCaseFactory) PingDBUseCase() port.UseCase[struct{}, struct{}] {
 
 // factoryParams holds all dependencies needed to build the use case factory.
 type factoryParams struct {
-	metricRepo port.MetricRepository
-	metricSvc  service.MetricService
-	transactor port.Transactor
+	metricRepo     port.MetricRepository
+	metricSvc      service.MetricService
+	transactor     port.Transactor
+	metricFileRepo port.MetricFileRepository
 }
 
 // validate checks if all required dependencies are set.
@@ -100,9 +101,10 @@ func (p factoryParams) validate() {
 // metricUseCasesParams builds the metric use cases parameters.
 func (p factoryParams) metricUseCasesParams() factory.MetricUseCasesParams {
 	return factory.MetricUseCasesParams{
-		MetricRepo: p.metricRepo,
-		MetricSvc:  p.metricSvc,
-		Transactor: p.transactor,
+		MetricRepo:     p.metricRepo,
+		MetricSvc:      p.metricSvc,
+		Transactor:     p.transactor,
+		MetricFileRepo: p.metricFileRepo,
 	}
 }
 
@@ -124,4 +126,9 @@ func WithMetricSvc(s service.MetricService) option.Option[factoryParams] {
 // WithTransactor sets the transactor dependency.
 func WithTransactor(t port.Transactor) option.Option[factoryParams] {
 	return func(p *factoryParams) { p.transactor = t }
+}
+
+// WithMetricFileRepo sets the file repo for snapshot.
+func WithMetricFileRepo(r port.MetricFileRepository) option.Option[factoryParams] {
+	return func(p *factoryParams) { p.metricFileRepo = r }
 }
