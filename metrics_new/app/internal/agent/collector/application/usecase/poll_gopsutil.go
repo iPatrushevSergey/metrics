@@ -19,7 +19,7 @@ func NewPollGopsutilTick(
 	metricsSampler port.MetricsSampler,
 	metricsRepo port.MetricsRepository,
 	log port.Logger,
-) *PollGopsutilTick {
+) port.UseCase[struct{}, int] {
 	return &PollGopsutilTick{
 		metricsSampler: metricsSampler,
 		metricsRepo:    metricsRepo,
@@ -27,8 +27,8 @@ func NewPollGopsutilTick(
 	}
 }
 
-// Run performs a single gopsutil poll tick.
-func (uc *PollGopsutilTick) Run(ctx context.Context) (int, error) {
+// Execute performs a single gopsutil poll tick.
+func (uc *PollGopsutilTick) Execute(ctx context.Context, _ struct{}) (int, error) {
 	select {
 	case <-ctx.Done():
 		return 0, ctx.Err()
