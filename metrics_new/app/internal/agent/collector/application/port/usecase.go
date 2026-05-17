@@ -2,7 +2,7 @@ package port
 
 import "context"
 
-// BackgroundRunner is the contract for background task use cases.
-type BackgroundRunner interface {
-	Run(ctx context.Context) (int, error)
+// UseCase is the common contract for application scenarios.
+type UseCase[In, Out any] interface {
+	Execute(ctx context.Context, in In) (Out, error)
 }
