@@ -17,9 +17,15 @@ type MetricReader interface {
 // MetricWriter provides write access to metrics for metrics module.
 type MetricWriter interface {
 	Create(ctx context.Context, metric entity.Metric) error
-	CreateBatch(ctx context.Context, metrics []entity.Metric) error
+	CreateBatchWithPrepare(ctx context.Context, metrics []entity.Metric) error
+	CreateBatchWithParams(ctx context.Context, metrics []entity.Metric) error
+	CreateBatchWithUnnest(ctx context.Context, metrics []entity.Metric) error
+	CreateBatchWithCopy(ctx context.Context, metrics []entity.Metric) error
 	Update(ctx context.Context, metric entity.Metric) error
-	UpdateBatch(ctx context.Context, metrics []entity.Metric) error
+	UpdateBatchWithPrepare(ctx context.Context, metrics []entity.Metric) error
+	UpdateBatchWithParams(ctx context.Context, metrics []entity.Metric) error
+	UpdateBatchWithUnnest(ctx context.Context, metrics []entity.Metric) error
+	UpdateBatchWithCopy(ctx context.Context, metrics []entity.Metric) error
 }
 
 // MetricRepository combines reader and writer for metrics DI wiring.
