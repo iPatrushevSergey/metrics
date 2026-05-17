@@ -24,7 +24,7 @@ func NewReportBatchTick(
 	metricsGateway port.MetricsGateway,
 	log port.Logger,
 	reportInterval time.Duration,
-) *ReportBatchTick {
+) port.UseCase[struct{}, int] {
 	return &ReportBatchTick{
 		metricsRepo:    metricsRepo,
 		metricsGateway: metricsGateway,
@@ -33,8 +33,8 @@ func NewReportBatchTick(
 	}
 }
 
-// Run builds a batch from the metrics repository and sends it to the metrics server.
-func (uc *ReportBatchTick) Run(ctx context.Context) (int, error) {
+// Execute builds a batch from the metrics repository and sends it to the metrics server.
+func (uc *ReportBatchTick) Execute(ctx context.Context, _ struct{}) (int, error) {
 	start := time.Now()
 	defer func() {
 		d := time.Since(start)
