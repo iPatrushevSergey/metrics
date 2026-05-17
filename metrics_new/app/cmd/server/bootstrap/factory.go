@@ -84,12 +84,16 @@ func (f *useCaseFactory) PingDBUseCase() port.UseCase[struct{}, struct{}] {
 type factoryParams struct {
 	metricRepo port.MetricRepository
 	metricSvc  service.MetricService
+	transactor port.Transactor
 }
 
 // validate checks if all required dependencies are set.
 func (p factoryParams) validate() {
 	if p.metricRepo == nil {
 		panic("NewUseCaseFactory: WithMetricRepo is required")
+	}
+	if p.transactor == nil {
+		panic("NewUseCaseFactory: WithTransactor is required")
 	}
 }
 
@@ -98,6 +102,7 @@ func (p factoryParams) metricUseCasesParams() factory.MetricUseCasesParams {
 	return factory.MetricUseCasesParams{
 		MetricRepo: p.metricRepo,
 		MetricSvc:  p.metricSvc,
+		Transactor: p.transactor,
 	}
 }
 
@@ -114,4 +119,9 @@ func WithMetricRepo(r port.MetricRepository) option.Option[factoryParams] {
 // WithMetricSvc sets the metric service dependency.
 func WithMetricSvc(s service.MetricService) option.Option[factoryParams] {
 	return func(p *factoryParams) { p.metricSvc = s }
+}
+
+// WithTransactor sets the transactor dependency.
+func WithTransactor(t port.Transactor) option.Option[factoryParams] {
+	return func(p *factoryParams) { p.transactor = t }
 }
