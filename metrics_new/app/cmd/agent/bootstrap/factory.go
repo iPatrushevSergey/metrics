@@ -16,9 +16,9 @@ type UseCaseFactory interface {
 
 // useCaseFactory implements UseCaseFactory; built in composition root.
 type useCaseFactory struct {
-	pollRuntime  collectorport.BackgroundRunner
-	pollGopsutil collectorport.BackgroundRunner
-	reportBatch  collectorport.BackgroundRunner
+	pollRuntime  collectorport.UseCase[struct{}, int]
+	pollGopsutil collectorport.UseCase[struct{}, int]
+	reportBatch  collectorport.UseCase[struct{}, int]
 }
 
 // NewUseCaseFactory builds the use case factory using functional options.
@@ -36,17 +36,17 @@ func NewUseCaseFactory(opts ...option.Option[factoryParams]) UseCaseFactory {
 }
 
 // PollRuntimeTick returns the poll runtime tick use case.
-func (f *useCaseFactory) PollRuntimeTick() collectorport.BackgroundRunner {
+func (f *useCaseFactory) PollRuntimeTick() collectorport.UseCase[struct{}, int] {
 	return f.pollRuntime
 }
 
 // PollGopsutilTick returns the poll gopsutil tick use case.
-func (f *useCaseFactory) PollGopsutilTick() collectorport.BackgroundRunner {
+func (f *useCaseFactory) PollGopsutilTick() collectorport.UseCase[struct{}, int] {
 	return f.pollGopsutil
 }
 
 // ReportBatchTick returns the report batch tick use case.
-func (f *useCaseFactory) ReportBatchTick() collectorport.BackgroundRunner {
+func (f *useCaseFactory) ReportBatchTick() collectorport.UseCase[struct{}, int] {
 	return f.reportBatch
 }
 
