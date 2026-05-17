@@ -19,9 +19,9 @@ type Params struct {
 
 // UseCases holds collector module use cases exposed to composition root.
 type UseCases struct {
-	PollRuntime  *usecase.PollRuntimeTick
-	PollGopsutil *usecase.PollGopsutilTick
-	ReportBatch  *usecase.ReportBatchTick
+	PollRuntime  port.UseCase[struct{}, int]
+	PollGopsutil port.UseCase[struct{}, int]
+	ReportBatch  port.UseCase[struct{}, int]
 }
 
 // NewUseCases builds collector module use cases.
