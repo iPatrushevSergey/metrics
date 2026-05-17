@@ -18,7 +18,7 @@ func NewPollRuntimeTick(
 	metricsSampler port.MetricsSampler,
 	metricsRepo port.MetricsRepository,
 	randGenerator func() float64,
-) *PollRuntimeTick {
+) port.UseCase[struct{}, int] {
 	return &PollRuntimeTick{
 		metricsSampler: metricsSampler,
 		metricsRepo:    metricsRepo,
@@ -26,8 +26,8 @@ func NewPollRuntimeTick(
 	}
 }
 
-// Run performs a single poll tick.
-func (uc *PollRuntimeTick) Run(ctx context.Context) (int, error) {
+// Execute performs a single poll tick.
+func (uc *PollRuntimeTick) Execute(ctx context.Context, _ struct{}) (int, error) {
 	select {
 	case <-ctx.Done():
 		return 0, ctx.Err()
