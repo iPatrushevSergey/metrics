@@ -6,12 +6,12 @@ import (
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/factory"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/service"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/http/handler"
+	metricpresfactory "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
 )
 
 // UseCaseFactory provides all module use cases needed by the composition root.
 type UseCaseFactory interface {
-	handler.UseCaseFactory
+	metricpresfactory.UseCaseFactory
 }
 
 // useCaseFactory implements UseCaseFactory.
@@ -22,10 +22,12 @@ type useCaseFactory struct {
 	upsertMetric       port.UseCase[dto.UpsertMetricInput, struct{}]
 	upsertMetricsBatch port.UseCase[dto.UpsertMetricsBatchInput, struct{}]
 	getAllMetrics      port.UseCase[struct{}, []dto.MetricForDisplayOutput]
-	pingDB             port.UseCase[struct{}, struct{}]
+	pingDB                 port.UseCase[struct{}, struct{}]
+	metricsSnapshot        port.UseCase[struct{}, int]
+	restoreMetricsFromFile port.UseCase[struct{}, struct{}]
 }
 
-var _ handler.UseCaseFactory = (*useCaseFactory)(nil)
+var _ metricpresfactory.UseCaseFactory = (*useCaseFactory)(nil)
 
 // NewUseCaseFactory builds the use case factory using functional options.
 func NewUseCaseFactory(opts ...option.Option[factoryParams]) UseCaseFactory {
@@ -41,7 +43,9 @@ func NewUseCaseFactory(opts ...option.Option[factoryParams]) UseCaseFactory {
 		upsertMetric:       metricUseCases.UpsertMetric,
 		upsertMetricsBatch: metricUseCases.UpsertMetricsBatch,
 		getAllMetrics:      metricUseCases.GetAllMetrics,
-		pingDB:             metricUseCases.PingDB,
+		pingDB:                 metricUseCases.PingDB,
+		metricsSnapshot:        metricUseCases.MetricsSnapshot,
+		restoreMetricsFromFile: metricUseCases.RestoreMetricsFromFile,
 	}
 }
 
@@ -80,12 +84,23 @@ func (f *useCaseFactory) PingDBUseCase() port.UseCase[struct{}, struct{}] {
 	return f.pingDB
 }
 
+// MetricsSnapshotUseCase returns the metrics snapshot use case.
+func (f *useCaseFactory) MetricsSnapshotUseCase() port.UseCase[struct{}, int] {
+	return f.metricsSnapshot
+}
+
+// RestoreMetricsFromFileUseCase returns the restore-from-file use case.
+func (f *useCaseFactory) RestoreMetricsFromFileUseCase() port.UseCase[struct{}, struct{}] {
+	return f.restoreMetricsFromFile
+}
+
 // factoryParams holds all dependencies needed to build the use case factory.
 type factoryParams struct {
 	metricRepo     port.MetricRepository
 	metricSvc      service.MetricService
 	transactor     port.Transactor
 	metricFileRepo port.MetricFileRepository
+	syncFileWrites bool
 }
 
 // validate checks if all required dependencies are set.
@@ -105,6 +120,7 @@ func (p factoryParams) metricUseCasesParams() factory.MetricUseCasesParams {
 		MetricSvc:      p.metricSvc,
 		Transactor:     p.transactor,
 		MetricFileRepo: p.metricFileRepo,
+		SyncFileWrites: p.syncFileWrites,
 	}
 }
 
@@ -128,7 +144,12 @@ func WithTransactor(t port.Transactor) option.Option[factoryParams] {
 	return func(p *factoryParams) { p.transactor = t }
 }
 
-// WithMetricFileRepo sets the file repo for snapshot.
+// WithMetricFileRepo sets the file snapshot repository.
 func WithMetricFileRepo(r port.MetricFileRepository) option.Option[factoryParams] {
 	return func(p *factoryParams) { p.metricFileRepo = r }
+}
+
+// WithSyncFileWrites sets synchronous snapshot writes from mutation use cases.
+func WithSyncFileWrites(enabled bool) option.Option[factoryParams] {
+	return func(p *factoryParams) { p.syncFileWrites = enabled }
 }
