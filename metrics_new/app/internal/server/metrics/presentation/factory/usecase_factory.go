@@ -15,4 +15,5 @@ type UseCaseFactory interface {
 	GetAllMetricsUseCase() port.UseCase[struct{}, []dto.MetricForDisplayOutput]
 	PingDBUseCase() port.UseCase[struct{}, struct{}]
 	MetricsSnapshotUseCase() port.UseCase[struct{}, int]
+	RestoreMetricsFromFileUseCase() port.UseCase[struct{}, struct{}]
 }
