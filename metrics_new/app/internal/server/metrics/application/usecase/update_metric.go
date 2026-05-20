@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
@@ -14,9 +15,10 @@ import (
 
 // UpdateMetric creates or updates a metric.
 type UpdateMetric struct {
-	metricRepo port.MetricRepository
+	metricRepo     port.MetricRepository
 	metricFileRepo port.MetricFileRepository
-	metricSvc  service.MetricService
+	auditPublisher port.AuditPublisher
+	metricSvc      service.MetricService
 }
 
 // NewUpdateMetric returns the update metric use case.
@@ -24,8 +26,14 @@ func NewUpdateMetric(
 	metricRepo port.MetricRepository,
 	metricSvc service.MetricService,
 	metricFileRepo port.MetricFileRepository,
+	auditPublisher port.AuditPublisher,
 ) port.UseCase[dto.UpdateMetricInput, struct{}] {
-	return &UpdateMetric{metricRepo: metricRepo, metricFileRepo: metricFileRepo, metricSvc: metricSvc}
+	return &UpdateMetric{
+		metricRepo:     metricRepo,
+		metricFileRepo: metricFileRepo,
+		auditPublisher: auditPublisher,
+		metricSvc:      metricSvc,
+	}
 }
 
 // Execute loads the existing metric if any, validates the input, merges the values, creates or updates the metric.
@@ -57,6 +65,13 @@ func (uc *UpdateMetric) Execute(ctx context.Context, inDTO dto.UpdateMetricInput
 			if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
 				return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 			}
+		}
+		if uc.auditPublisher != nil {
+			uc.auditPublisher.Publish(dto.AuditEvent{
+				TS:        time.Now().Unix(),
+				Metrics:   []string{inDTO.ID},
+				IPAddress: inDTO.IPAddress,
+			})
 		}
 		return struct{}{}, nil
 	}
@@ -90,6 +105,13 @@ func (uc *UpdateMetric) Execute(ctx context.Context, inDTO dto.UpdateMetricInput
 		if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 		}
+	}
+	if uc.auditPublisher != nil {
+		uc.auditPublisher.Publish(dto.AuditEvent{
+			TS:        time.Now().Unix(),
+			Metrics:   []string{inDTO.ID},
+			IPAddress: inDTO.IPAddress,
+		})
 	}
 	return struct{}{}, nil
 }
