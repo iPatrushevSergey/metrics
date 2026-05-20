@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
@@ -15,10 +16,11 @@ import (
 
 // UpsertMetricsBatch creates or updates a batch of metrics.
 type UpsertMetricsBatch struct {
-	metricRepo port.MetricRepository
+	metricRepo     port.MetricRepository
 	metricFileRepo port.MetricFileRepository
-	metricSvc  service.MetricService
-	transactor port.Transactor
+	auditPublisher port.AuditPublisher
+	metricSvc      service.MetricService
+	transactor     port.Transactor
 }
 
 // NewUpsertMetricsBatch returns the batch upsert use case.
@@ -27,12 +29,14 @@ func NewUpsertMetricsBatch(
 	metricSvc service.MetricService,
 	transactor port.Transactor,
 	metricFileRepo port.MetricFileRepository,
+	auditPublisher port.AuditPublisher,
 ) port.UseCase[dto.UpsertMetricsBatchInput, struct{}] {
 	return &UpsertMetricsBatch{
 		metricRepo:     metricRepo,
 		metricFileRepo: metricFileRepo,
-		metricSvc:  metricSvc,
-		transactor: transactor,
+		auditPublisher: auditPublisher,
+		metricSvc:      metricSvc,
+		transactor:     transactor,
 	}
 }
 
@@ -130,6 +134,14 @@ func (uc *UpsertMetricsBatch) Execute(ctx context.Context, inDTO dto.UpsertMetri
 		if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 		}
+	}
+
+	if uc.auditPublisher != nil {
+		uc.auditPublisher.Publish(dto.AuditEvent{
+			TS:        time.Now().Unix(),
+			Metrics:   metricIDs,
+			IPAddress: inDTO.IPAddress,
+		})
 	}
 
 	return struct{}{}, nil
