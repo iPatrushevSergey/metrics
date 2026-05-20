@@ -132,9 +132,10 @@ func (h *MetricHandler) Update(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	inDTO := appdto.UpdateMetricInput{
-		MType: strings.ToLower(strings.TrimSpace(c.Param("type"))),
-		ID:    strings.TrimSpace(c.Param("name")),
-		Value: strings.TrimSpace(c.Param("value")),
+		MType:     strings.ToLower(strings.TrimSpace(c.Param("type"))),
+		ID:        strings.TrimSpace(c.Param("name")),
+		Value:     strings.TrimSpace(c.Param("value")),
+		IPAddress: c.ClientIP(),
 	}
 
 	if strings.TrimSpace(inDTO.ID) == "" {
@@ -171,11 +172,12 @@ func (h *MetricHandler) UpdateJSON(c *gin.Context) {
 	}
 
 	inDTO := appdto.UpsertMetricInput{
-		ID:    strings.TrimSpace(reqDTO.ID),
-		MType: reqDTO.MType,
-		Delta: reqDTO.Delta,
-		Value: reqDTO.Value,
-		Hash:  strings.TrimSpace(reqDTO.Hash),
+		ID:        strings.TrimSpace(reqDTO.ID),
+		MType:     reqDTO.MType,
+		Delta:     reqDTO.Delta,
+		Value:     reqDTO.Value,
+		Hash:      strings.TrimSpace(reqDTO.Hash),
+		IPAddress: c.ClientIP(),
 	}
 
 	if _, err := h.useCases.UpsertMetricUseCase().Execute(ctx, inDTO); err != nil {
@@ -216,7 +218,10 @@ func (h *MetricHandler) UpdatesJSON(c *gin.Context) {
 		})
 	}
 
-	if _, err := h.useCases.UpsertMetricsBatchUseCase().Execute(ctx, appdto.UpsertMetricsBatchInput{Metrics: inDTOs}); err != nil {
+	if _, err := h.useCases.UpsertMetricsBatchUseCase().Execute(ctx, appdto.UpsertMetricsBatchInput{
+		Metrics:   inDTOs,
+		IPAddress: c.ClientIP(),
+	}); err != nil {
 		switch {
 		case errors.Is(err, application.ErrBadMetricValue), errors.Is(err, application.ErrBadMetricType):
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
