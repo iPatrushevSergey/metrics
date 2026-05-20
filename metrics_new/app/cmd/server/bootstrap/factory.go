@@ -16,15 +16,17 @@ type UseCaseFactory interface {
 
 // useCaseFactory implements UseCaseFactory.
 type useCaseFactory struct {
-	getMetricValue     port.UseCase[dto.GetMetricValueInput, string]
-	getMetric          port.UseCase[dto.GetMetricInput, dto.MetricOutput]
-	updateMetric       port.UseCase[dto.UpdateMetricInput, struct{}]
-	upsertMetric       port.UseCase[dto.UpsertMetricInput, struct{}]
-	upsertMetricsBatch port.UseCase[dto.UpsertMetricsBatchInput, struct{}]
-	getAllMetrics      port.UseCase[struct{}, []dto.MetricForDisplayOutput]
+	getMetricValue         port.UseCase[dto.GetMetricValueInput, string]
+	getMetric              port.UseCase[dto.GetMetricInput, dto.MetricOutput]
+	updateMetric           port.UseCase[dto.UpdateMetricInput, struct{}]
+	upsertMetric           port.UseCase[dto.UpsertMetricInput, struct{}]
+	upsertMetricsBatch     port.UseCase[dto.UpsertMetricsBatchInput, struct{}]
+	getAllMetrics          port.UseCase[struct{}, []dto.MetricForDisplayOutput]
 	pingDB                 port.UseCase[struct{}, struct{}]
 	metricsSnapshot        port.UseCase[struct{}, int]
 	restoreMetricsFromFile port.UseCase[struct{}, struct{}]
+	recordAuditToFile      port.UseCase[dto.AuditEvent, struct{}]
+	sendAuditRemote        port.UseCase[dto.AuditEvent, struct{}]
 }
 
 var _ metricpresfactory.UseCaseFactory = (*useCaseFactory)(nil)
@@ -37,15 +39,17 @@ func NewUseCaseFactory(opts ...option.Option[factoryParams]) UseCaseFactory {
 
 	metricUseCases := buildMetricUseCases(p)
 	return &useCaseFactory{
-		getMetricValue:     metricUseCases.GetMetricValue,
-		getMetric:          metricUseCases.GetMetric,
-		updateMetric:       metricUseCases.UpdateMetric,
-		upsertMetric:       metricUseCases.UpsertMetric,
-		upsertMetricsBatch: metricUseCases.UpsertMetricsBatch,
-		getAllMetrics:      metricUseCases.GetAllMetrics,
+		getMetricValue:         metricUseCases.GetMetricValue,
+		getMetric:              metricUseCases.GetMetric,
+		updateMetric:           metricUseCases.UpdateMetric,
+		upsertMetric:           metricUseCases.UpsertMetric,
+		upsertMetricsBatch:     metricUseCases.UpsertMetricsBatch,
+		getAllMetrics:          metricUseCases.GetAllMetrics,
 		pingDB:                 metricUseCases.PingDB,
 		metricsSnapshot:        metricUseCases.MetricsSnapshot,
 		restoreMetricsFromFile: metricUseCases.RestoreMetricsFromFile,
+		recordAuditToFile:      metricUseCases.RecordAuditToFile,
+		sendAuditRemote:        metricUseCases.SendAuditRemote,
 	}
 }
 
@@ -94,6 +98,16 @@ func (f *useCaseFactory) RestoreMetricsFromFileUseCase() port.UseCase[struct{}, 
 	return f.restoreMetricsFromFile
 }
 
+// RecordAuditToFileUseCase returns the record audit to file use case.
+func (f *useCaseFactory) RecordAuditToFileUseCase() port.UseCase[dto.AuditEvent, struct{}] {
+	return f.recordAuditToFile
+}
+
+// SendAuditRemoteUseCase returns the send audit remote use case.
+func (f *useCaseFactory) SendAuditRemoteUseCase() port.UseCase[dto.AuditEvent, struct{}] {
+	return f.sendAuditRemote
+}
+
 // factoryParams holds all dependencies needed to build the use case factory.
 type factoryParams struct {
 	metricRepo     port.MetricRepository
@@ -101,6 +115,9 @@ type factoryParams struct {
 	transactor     port.Transactor
 	metricFileRepo port.MetricFileRepository
 	syncFileWrites bool
+	auditFileRepo  port.AuditFileRepository
+	auditGateway   port.AuditGateway
+	auditPublisher port.AuditPublisher
 }
 
 // validate checks if all required dependencies are set.
@@ -121,6 +138,9 @@ func (p factoryParams) metricUseCasesParams() factory.MetricUseCasesParams {
 		Transactor:     p.transactor,
 		MetricFileRepo: p.metricFileRepo,
 		SyncFileWrites: p.syncFileWrites,
+		AuditFileRepo:  p.auditFileRepo,
+		AuditGateway:   p.auditGateway,
+		AuditPublisher: p.auditPublisher,
 	}
 }
 
@@ -152,4 +172,19 @@ func WithMetricFileRepo(r port.MetricFileRepository) option.Option[factoryParams
 // WithSyncFileWrites sets synchronous snapshot writes from mutation use cases.
 func WithSyncFileWrites(enabled bool) option.Option[factoryParams] {
 	return func(p *factoryParams) { p.syncFileWrites = enabled }
+}
+
+// WithAuditFileRepo sets the audit file repository.
+func WithAuditFileRepo(r port.AuditFileRepository) option.Option[factoryParams] {
+	return func(p *factoryParams) { p.auditFileRepo = r }
+}
+
+// WithAuditGateway sets the audit gateway.
+func WithAuditGateway(g port.AuditGateway) option.Option[factoryParams] {
+	return func(p *factoryParams) { p.auditGateway = g }
+}
+
+// WithAuditPublisher sets the audit publisher.
+func WithAuditPublisher(pub port.AuditPublisher) option.Option[factoryParams] {
+	return func(p *factoryParams) { p.auditPublisher = pub }
 }
