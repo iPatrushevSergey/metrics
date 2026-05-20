@@ -29,21 +29,24 @@ type MetricForDisplayOutput struct {
 
 // UpdateMetricInput is the input for metric update.
 type UpdateMetricInput struct {
-	MType string
-	ID    string
-	Value string
+	MType     string
+	ID        string
+	Value     string
+	IPAddress string
 }
 
 // UpsertMetricInput is a single metric upsert.
 type UpsertMetricInput struct {
-	ID    string
-	MType string
-	Delta *int64
-	Value *float64
-	Hash  string
+	ID        string
+	MType     string
+	Delta     *int64
+	Value     *float64
+	Hash      string
+	IPAddress string
 }
 
 // UpsertMetricsBatchInput is a batch upsert.
 type UpsertMetricsBatchInput struct {
-	Metrics []UpsertMetricInput
+	Metrics   []UpsertMetricInput
+	IPAddress string
 }
