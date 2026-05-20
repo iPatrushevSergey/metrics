@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
@@ -14,9 +15,10 @@ import (
 
 // UpsertMetric creates or updates a metric.
 type UpsertMetric struct {
-	metricRepo port.MetricRepository
+	metricRepo     port.MetricRepository
 	metricFileRepo port.MetricFileRepository
-	metricSvc  service.MetricService
+	auditPublisher port.AuditPublisher
+	metricSvc      service.MetricService
 }
 
 // NewUpsertMetric returns the upsert metric use case.
@@ -24,8 +26,14 @@ func NewUpsertMetric(
 	metricRepo port.MetricRepository,
 	metricSvc service.MetricService,
 	metricFileRepo port.MetricFileRepository,
+	auditPublisher port.AuditPublisher,
 ) port.UseCase[dto.UpsertMetricInput, struct{}] {
-	return &UpsertMetric{metricRepo: metricRepo, metricFileRepo: metricFileRepo, metricSvc: metricSvc}
+	return &UpsertMetric{
+		metricRepo:     metricRepo,
+		metricFileRepo: metricFileRepo,
+		auditPublisher: auditPublisher,
+		metricSvc:      metricSvc,
+	}
 }
 
 // Execute validates input, loads existing row if any, merges, creates or updates.
@@ -72,6 +80,13 @@ func (uc *UpsertMetric) Execute(ctx context.Context, inDTO dto.UpsertMetricInput
 				return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 			}
 		}
+		if uc.auditPublisher != nil {
+			uc.auditPublisher.Publish(dto.AuditEvent{
+				TS:        time.Now().Unix(),
+				Metrics:   []string{inDTO.ID},
+				IPAddress: inDTO.IPAddress,
+			})
+		}
 		return struct{}{}, nil
 	}
 
@@ -104,6 +119,13 @@ func (uc *UpsertMetric) Execute(ctx context.Context, inDTO dto.UpsertMetricInput
 		if err := uc.metricFileRepo.SaveAll(ctx, metrics); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", application.ErrInternal, err)
 		}
+	}
+	if uc.auditPublisher != nil {
+		uc.auditPublisher.Publish(dto.AuditEvent{
+			TS:        time.Now().Unix(),
+			Metrics:   []string{inDTO.ID},
+			IPAddress: inDTO.IPAddress,
+		})
 	}
 	return struct{}{}, nil
 }
