@@ -16,4 +16,6 @@ type UseCaseFactory interface {
 	PingDBUseCase() port.UseCase[struct{}, struct{}]
 	MetricsSnapshotUseCase() port.UseCase[struct{}, int]
 	RestoreMetricsFromFileUseCase() port.UseCase[struct{}, struct{}]
+	RecordAuditToFileUseCase() port.UseCase[dto.AuditEvent, struct{}]
+	SendAuditRemoteUseCase() port.UseCase[dto.AuditEvent, struct{}]
 }
