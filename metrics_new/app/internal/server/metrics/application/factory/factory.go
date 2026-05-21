@@ -31,7 +31,7 @@ type MetricUseCases struct {
 	MetricsSnapshot        port.UseCase[struct{}, int]
 	RestoreMetricsFromFile port.UseCase[struct{}, struct{}]
 	RecordAuditToFile      port.UseCase[dto.AuditEvent, struct{}]
-	CreateAudit            port.UseCase[dto.AuditEvent, struct{}]
+	CreateRemoteAudit      port.UseCase[dto.AuditEvent, struct{}]
 }
 
 // NewMetricUseCases builds metrics module use cases.
@@ -45,7 +45,7 @@ func NewMetricUseCases(p MetricUseCasesParams) *MetricUseCases {
 		metricsSnapshot        port.UseCase[struct{}, int]
 		restoreMetricsFromFile port.UseCase[struct{}, struct{}]
 		recordAuditToFile      port.UseCase[dto.AuditEvent, struct{}]
-		createAudit            port.UseCase[dto.AuditEvent, struct{}]
+		createRemoteAudit      port.UseCase[dto.AuditEvent, struct{}]
 	)
 	if p.MetricFileRepo != nil {
 		metricsSnapshot = usecase.NewMetricsSnapshot(p.MetricRepo, p.MetricFileRepo)
@@ -55,7 +55,7 @@ func NewMetricUseCases(p MetricUseCasesParams) *MetricUseCases {
 		recordAuditToFile = usecase.NewRecordAuditToFile(p.AuditFileRepo)
 	}
 	if p.AuditGateway != nil {
-		createAudit = usecase.NewCreateAudit(p.AuditGateway)
+		createRemoteAudit = usecase.NewCreateRemoteAudit(p.AuditGateway)
 	}
 
 	return &MetricUseCases{
@@ -69,6 +69,6 @@ func NewMetricUseCases(p MetricUseCasesParams) *MetricUseCases {
 		MetricsSnapshot:        metricsSnapshot,
 		RestoreMetricsFromFile: restoreMetricsFromFile,
 		RecordAuditToFile:      recordAuditToFile,
-		CreateAudit:            createAudit,
+		CreateRemoteAudit:      createRemoteAudit,
 	}
 }
