@@ -9,15 +9,20 @@ import (
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/encryption"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/http_client"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/repository/postgres"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/retry"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/option"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/config"
-	metricfile "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/audit"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/audit_gateway"
+	fileaudit "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file/audit"
+	filemetrics "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file/metrics"
 	metricinmemory "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/inmemory"
 	metricpostgres "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/postgres"
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/service"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/lifecycle"
@@ -79,6 +84,7 @@ func Run() error {
 		"audit_file_configured", cfg.Server.AuditFilePath != "",
 		"audit_url_configured", cfg.Server.AuditURL != "",
 		"audit_http_timeout", cfg.Server.AuditHTTPTimeout,
+		"audit_sub_size", cfg.Audit.AuditSubSize,
 	)
 
 	// Initialize database pool.
@@ -150,7 +156,7 @@ func Run() error {
 	switch storageMode {
 	case StorageFile:
 		// File repo: restore on startup; periodic or sync snapshots while running; snapshot on shutdown.
-		metricFileRepo := metricfile.NewMetricFileRepository(cfg.Server.FileStoragePath)
+		metricFileRepo := filemetrics.NewMetricFileRepository(cfg.Server.FileStoragePath)
 		factoryOpts = append(factoryOpts,
 			WithMetricFileRepo(metricFileRepo),
 			WithSyncFileWrites(cfg.Server.StoreInterval == 0), // interval==0: persist after each mutation
@@ -159,7 +165,68 @@ func Run() error {
 		// FILE_STORAGE_PATH, STORE_INTERVAL and RESTORE are not used.
 	}
 
-	// Initialize use case factory.
+	// Initialize audit components.
+	var (
+		auditPublisher    port.AuditPublisher
+		auditFileRepo     port.AuditFileRepository
+		auditGateway      port.AuditGateway
+		auditFileEvents   <-chan dto.AuditEvent
+		auditRemoteEvents <-chan dto.AuditEvent
+	)
+	auditFilePath := strings.TrimSpace(cfg.Server.AuditFilePath)
+	auditURL := strings.TrimSpace(cfg.Server.AuditURL)
+
+	// Initialize audit publisher.
+	if auditFilePath != "" || auditURL != "" {
+		auditPublisher = audit.NewAuditEventPublisher(zl, cfg.Audit.AuditSubSize)
+
+		// Initialize audit file repository.
+		if auditFilePath != "" {
+			auditFileRepo, err = fileaudit.NewAuditFileRepository(auditFilePath)
+			if err != nil {
+				return fmt.Errorf("audit file repository: %w", err)
+			}
+			factoryOpts = append(factoryOpts, WithAuditFileRepo(auditFileRepo))
+			auditFileEvents, err = auditPublisher.Subscribe("file")
+			if err != nil {
+				return fmt.Errorf("subscribe audit file worker: %w", err)
+			}
+		}
+
+		// Initialize audit remote gateway.
+		if auditURL != "" {
+			auditGateway, err = audit_gateway.NewAuditRemoteGateway(
+				audit_gateway.AuditGatewayConfig{
+					URL:         auditURL,
+					HTTPTimeout: cfg.Server.AuditHTTPTimeout,
+				},
+				&http.Client{Timeout: cfg.Server.AuditHTTPTimeout},
+				retry.WithRetriableCheck(http_client.IsRetriable),
+				retry.WithMaxRetries(3),
+				retry.WithBackoffFunc(func(attempt int) time.Duration {
+					switch attempt {
+					case 0:
+						return 1 * time.Second
+					case 1:
+						return 3 * time.Second
+					default:
+						return 5 * time.Second
+					}
+				}),
+			)
+			if err != nil {
+				return fmt.Errorf("audit remote gateway: %w", err)
+			}
+			factoryOpts = append(factoryOpts, WithAuditGateway(auditGateway))
+			auditRemoteEvents, err = auditPublisher.Subscribe("remote")
+			if err != nil {
+				return fmt.Errorf("subscribe audit remote worker: %w", err)
+			}
+		}
+		factoryOpts = append(factoryOpts, WithAuditPublisher(auditPublisher))
+	}
+
+	// Build use case factory.
 	useCases := NewUseCaseFactory(factoryOpts...)
 
 	// Initialize router.
@@ -168,17 +235,22 @@ func Run() error {
 		return fmt.Errorf("router: %w", err)
 	}
 
+	// Initialize application.
 	app := &lifecycle.App{
 		Server: &http.Server{
 			Addr:    cfg.Server.Address,
 			Handler: router,
 		},
-		UseCases:        useCases,
-		Log:             zl,
-		ShutdownTimeout: cfg.Server.ShutdownTimeout,
-		FileStorage:     storageMode == StorageFile,
-		Restore:         cfg.Server.Restore,
-		StoreInterval:   cfg.Server.StoreInterval,
+		UseCases:          useCases,
+		Log:               zl,
+		ShutdownTimeout:   cfg.Server.ShutdownTimeout,
+		FileStorage:       storageMode == StorageFile,
+		Restore:           cfg.Server.Restore,
+		StoreInterval:     cfg.Server.StoreInterval,
+		AuditPublisher:    auditPublisher,
+		AuditFileRepo:     auditFileRepo,
+		AuditFileEvents:   auditFileEvents,
+		AuditRemoteEvents: auditRemoteEvents,
 	}
 
 	app.Start()
