@@ -17,5 +17,5 @@ type UseCaseFactory interface {
 	MetricsSnapshotUseCase() port.UseCase[struct{}, int]
 	RestoreMetricsFromFileUseCase() port.UseCase[struct{}, struct{}]
 	RecordAuditToFileUseCase() port.UseCase[dto.AuditEvent, struct{}]
-	SendAuditRemoteUseCase() port.UseCase[dto.AuditEvent, struct{}]
+	CreateRemoteAuditUseCase() port.UseCase[dto.AuditEvent, struct{}]
 }
