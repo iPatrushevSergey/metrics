@@ -26,7 +26,7 @@ type useCaseFactory struct {
 	metricsSnapshot        port.UseCase[struct{}, int]
 	restoreMetricsFromFile port.UseCase[struct{}, struct{}]
 	recordAuditToFile      port.UseCase[dto.AuditEvent, struct{}]
-	sendAuditRemote        port.UseCase[dto.AuditEvent, struct{}]
+	createRemoteAudit      port.UseCase[dto.AuditEvent, struct{}]
 }
 
 var _ metricpresfactory.UseCaseFactory = (*useCaseFactory)(nil)
@@ -49,7 +49,7 @@ func NewUseCaseFactory(opts ...option.Option[factoryParams]) UseCaseFactory {
 		metricsSnapshot:        metricUseCases.MetricsSnapshot,
 		restoreMetricsFromFile: metricUseCases.RestoreMetricsFromFile,
 		recordAuditToFile:      metricUseCases.RecordAuditToFile,
-		sendAuditRemote:        metricUseCases.SendAuditRemote,
+		createRemoteAudit:      metricUseCases.CreateRemoteAudit,
 	}
 }
 
@@ -103,9 +103,9 @@ func (f *useCaseFactory) RecordAuditToFileUseCase() port.UseCase[dto.AuditEvent,
 	return f.recordAuditToFile
 }
 
-// SendAuditRemoteUseCase returns the send audit remote use case.
-func (f *useCaseFactory) SendAuditRemoteUseCase() port.UseCase[dto.AuditEvent, struct{}] {
-	return f.sendAuditRemote
+// CreateRemoteAuditUseCase returns the create remote audit use case.
+func (f *useCaseFactory) CreateRemoteAuditUseCase() port.UseCase[dto.AuditEvent, struct{}] {
+	return f.createRemoteAudit
 }
 
 // factoryParams holds all dependencies needed to build the use case factory.
