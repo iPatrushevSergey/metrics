@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
 	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/worker"
@@ -25,7 +26,13 @@ type App struct {
 	Restore       bool
 	StoreInterval time.Duration
 
+	AuditPublisher    port.AuditPublisher
+	AuditFileRepo     port.AuditFileRepository
+	AuditFileEvents   <-chan dto.AuditEvent
+	AuditRemoteEvents <-chan dto.AuditEvent
+
 	cancelSnapshotWorker context.CancelFunc
+	cancelAuditWorker    context.CancelFunc
 }
 
 // Start starts the application.
@@ -37,6 +44,17 @@ func (a *App) Start() {
 			if _, err := uc.Execute(ctx, struct{}{}); err != nil {
 				a.Log.Warn("restore metrics from file failed", "error", err)
 			}
+		}
+	}
+
+	if a.AuditPublisher != nil {
+		workerCtx, cancel := context.WithCancel(ctx)
+		a.cancelAuditWorker = cancel
+		if a.AuditFileEvents != nil {
+			go worker.NewAuditFileSubscriber(a.AuditFileEvents, a.UseCases, a.Log).Run(workerCtx)
+		}
+		if a.AuditRemoteEvents != nil {
+			go worker.NewAuditRemoteSubscriber(a.AuditRemoteEvents, a.UseCases, a.Log).Run(workerCtx)
 		}
 	}
 
@@ -79,6 +97,22 @@ func (a *App) Stop() error {
 			if _, err := uc.Execute(ctx, struct{}{}); err != nil {
 				a.Log.Error("metrics snapshot on shutdown failed", "error", err)
 			}
+		}
+	}
+
+	if a.AuditPublisher != nil {
+		if a.cancelAuditWorker != nil {
+			a.cancelAuditWorker()
+		}
+		a.AuditPublisher.Unsubscribe("file")
+		a.AuditPublisher.Unsubscribe("remote")
+		if a.AuditFileRepo != nil {
+			if err := a.AuditFileRepo.Close(); err != nil {
+				a.Log.Error("audit file repository close failed", "error", err)
+			}
+		}
+		if err := a.AuditPublisher.Close(ctx); err != nil {
+			a.Log.Error("audit shutdown failed", "error", err)
 		}
 	}
 
