@@ -5,8 +5,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 // MetricMemoryRepository implements a metric repository for in-memory storage.

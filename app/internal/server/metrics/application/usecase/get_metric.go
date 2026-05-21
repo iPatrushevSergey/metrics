@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/service"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/service"
 )
 
 // GetMetric loads a single metric.

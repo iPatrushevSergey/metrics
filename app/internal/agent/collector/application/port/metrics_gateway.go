@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/dto"
 )
 
 // MetricsGateway is the outbound port to the external metrics server.

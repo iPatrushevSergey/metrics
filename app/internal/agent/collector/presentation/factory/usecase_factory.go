@@ -1,6 +1,6 @@
 package factory
 
-import "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
+import "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
 
 // UseCaseFactory provides collector use cases to the presentation layer.
 type UseCaseFactory interface {

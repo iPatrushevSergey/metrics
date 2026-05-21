@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/config"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/config"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
 )
 
 // Run runs the agent application.

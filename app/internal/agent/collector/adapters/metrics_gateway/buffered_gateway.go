@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
 )
 
 // job is one pooled outbound call: requestMethod runs the concrete MetricsGateway method.

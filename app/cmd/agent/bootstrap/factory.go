@@ -3,10 +3,10 @@ package bootstrap
 import (
 	"time"
 
-	collectorfactory "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/factory"
-	collectorport "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	collectorpresfactory "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/presentation/factory"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/option"
+	collectorfactory "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/factory"
+	collectorport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	collectorpresfactory "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/option"
 )
 
 // UseCaseFactory provides all module use cases needed by composition root.

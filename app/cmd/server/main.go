@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/cmd/server/bootstrap"
+	"github.com/iPatrushevSergey/metrics/app/cmd/server/bootstrap"
 )
 
 func main() {

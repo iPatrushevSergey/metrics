@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file/audit/model"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/audit/model"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 )
 
 //go:generate goverter gen .

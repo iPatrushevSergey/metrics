@@ -3,7 +3,7 @@ package port
 import (
 	"runtime"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/domain/entity"
 )
 
 // MetricsRepository holds collected metrics state.

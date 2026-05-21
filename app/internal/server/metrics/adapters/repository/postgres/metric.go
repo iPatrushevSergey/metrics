@@ -7,11 +7,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	postgreskit "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/repository/postgres"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/postgres/converter"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/postgres/model"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	postgreskit "github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/repository/postgres"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/postgres/converter"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/postgres/model"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 // MetricPostgresRepository is a PostgreSQL implementation of the metric repository.

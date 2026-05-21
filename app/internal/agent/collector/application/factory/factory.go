@@ -3,8 +3,8 @@ package factory
 import (
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/usecase"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/usecase"
 )
 
 // Params contains dependencies required to build collector use cases.

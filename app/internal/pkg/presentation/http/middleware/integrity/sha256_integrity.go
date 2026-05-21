@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/integrity"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/integrity"
 )
 
 // HashSHA256Header is a header for SHA256 hash.

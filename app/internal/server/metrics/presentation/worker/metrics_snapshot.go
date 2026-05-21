@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
 )
 
 // SnapshotWorker periodically persists the in-memory metrics snapshot to a file.

@@ -4,8 +4,8 @@
 package converter
 
 import (
-	model "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file/audit/model"
-	dto "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
+	model "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/audit/model"
+	dto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 )
 
 type AuditConverterImpl struct{}

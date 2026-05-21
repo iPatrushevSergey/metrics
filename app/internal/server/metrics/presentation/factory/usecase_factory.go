@@ -1,8 +1,8 @@
 package factory
 
 import (
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 )
 
 // UseCaseFactory provides metrics module use cases to the presentation layer.

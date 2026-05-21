@@ -5,7 +5,7 @@ import (
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	trmmanager "github.com/avito-tech/go-transaction-manager/trm/v2/manager"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/retry"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

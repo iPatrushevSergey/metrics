@@ -8,11 +8,11 @@ import (
 	"io"
 	"net/http"
 
-	httpdto "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_gateway/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/encryption"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/http_client"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/integrity"
+	httpdto "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/encryption"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/http_client"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/integrity"
 )
 
 // metricsUpdateBatchPrepare prepares a request for the metrics update batch.

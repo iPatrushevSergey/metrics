@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/domain/entity"
 )
 
 // MetricsRepository repository for collected metrics state.

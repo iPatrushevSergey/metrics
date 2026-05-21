@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/worker"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/worker"
 )
 
 // App represents the application lifecycle.

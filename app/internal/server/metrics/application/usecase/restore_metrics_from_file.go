@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 )
 
 // RestoreMetricsFromFile loads metrics from the snapshot file into memory.
 type RestoreMetricsFromFile struct {
-	metricRepo port.MetricRepository
+	metricRepo     port.MetricRepository
 	metricFileRepo port.MetricFileRepository
 }
 

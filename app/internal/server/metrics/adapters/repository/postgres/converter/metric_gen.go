@@ -4,8 +4,8 @@
 package converter
 
 import (
-	model "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/postgres/model"
-	entity "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	model "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/postgres/model"
+	entity "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 type MetricConverterImpl struct{}

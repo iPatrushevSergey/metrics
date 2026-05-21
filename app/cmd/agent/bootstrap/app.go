@@ -8,17 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_gateway"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/repository/inmemory"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/sampler"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/presentation/worker"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/config"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/compression"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/encryption"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/http_client"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/integrity"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/retry"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/repository/inmemory"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/sampler"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/worker"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/config"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/compression"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/encryption"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/http_client"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/integrity"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
 )
 
 // AgentApp holds the configuration and logger.

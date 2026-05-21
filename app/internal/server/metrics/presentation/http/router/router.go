@@ -3,9 +3,9 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/http/handler"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/http/handler"
 )
 
 // RegisterRoutes registers metrics endpoints on the router.

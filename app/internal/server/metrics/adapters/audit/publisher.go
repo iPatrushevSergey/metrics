@@ -7,8 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 )
 
 var errPublisherClosed = errors.New("audit event publisher closed")

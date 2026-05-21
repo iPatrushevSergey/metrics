@@ -7,12 +7,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/presentation/http/middleware/compression"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/presentation/http/middleware/cryption"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/presentation/http/middleware/integrity"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/presentation/http/middleware/logger"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
-	metricrouter "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/http/router"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/compression"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/cryption"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/integrity"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/logger"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
+	metricrouter "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/http/router"
 )
 
 // NewRouter composes global middleware and module routers.

@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 )
 
 // MetricsSnapshot loads all metrics from memory and rewrites the snapshot file.

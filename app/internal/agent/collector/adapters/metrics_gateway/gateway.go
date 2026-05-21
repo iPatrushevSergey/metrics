@@ -4,13 +4,13 @@ import (
 	"context"
 	"net/http"
 
-	gatewayport "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_gateway/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/compression"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/encryption"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/integrity"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/retry"
+	gatewayport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/compression"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/encryption"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/integrity"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
 )
 
 var (

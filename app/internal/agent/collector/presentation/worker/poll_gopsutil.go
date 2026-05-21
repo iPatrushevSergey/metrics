@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/presentation/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/factory"
 )
 
 // PollGopsutilWorker runs PollGopsutilTick on each interval.

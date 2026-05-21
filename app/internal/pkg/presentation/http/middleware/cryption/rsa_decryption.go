@@ -4,7 +4,7 @@ import (
 	"crypto/rsa"
 	"net/http"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/encryption"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/encryption"
 )
 
 // HeaderName header name for a hybrid-encrypted body.

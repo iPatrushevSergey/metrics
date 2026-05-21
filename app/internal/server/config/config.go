@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/repository/postgres"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/repository/postgres"
 )
 
 type Config struct {

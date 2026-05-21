@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/domain/service"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/domain/service"
 )
 
 // ReportBatchTick sends metrics batch built from the current metrics repository.

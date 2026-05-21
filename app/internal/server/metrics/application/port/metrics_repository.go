@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 // MetricReader provides read-only access to metrics for metrics module.

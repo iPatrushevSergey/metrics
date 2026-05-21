@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 )
 
 // AuditFileRepository appends audit events to a log file.

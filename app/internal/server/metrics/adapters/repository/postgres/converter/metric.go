@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/postgres/model"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/postgres/model"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 //go:generate goverter gen .

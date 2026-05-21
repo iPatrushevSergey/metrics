@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/logger"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/adapters/metrics_gateway"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway"
 )
 
 type Config struct {
@@ -26,8 +26,8 @@ type Config struct {
 // Agent holds collector settings.
 type Agent struct {
 	metrics_gateway.MetricsGatewayConfig `mapstructure:",squash"`
-	PollInterval           time.Duration `mapstructure:"poll_interval"`
-	ReportInterval         time.Duration `mapstructure:"report_interval"`
+	PollInterval                         time.Duration `mapstructure:"poll_interval"`
+	ReportInterval                       time.Duration `mapstructure:"report_interval"`
 	// RateLimit is the worker-pool size: max simultaneous outbound metric batch RPCs toward the server. Not "requests per second".
 	RateLimit int    `mapstructure:"rate_limit"`
 	Key       string `mapstructure:"key"`

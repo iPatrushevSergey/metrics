@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/agent/collector/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
 )
 
 // PollRuntimeTick records runtime + custom poll tick into the metrics repository.

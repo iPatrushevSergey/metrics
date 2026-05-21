@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/retry"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 )
 
 // preparedRequest contains the URL, body bytes, and headers for sending the request.

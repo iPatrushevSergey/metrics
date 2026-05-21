@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 // MetricService performs operations on metrics.

@@ -7,9 +7,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file/metrics/converter"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file/metrics/model"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/metrics/converter"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/metrics/model"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 // MetricFileRepository persists metrics to a file.

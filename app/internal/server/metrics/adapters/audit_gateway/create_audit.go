@@ -8,9 +8,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/http_client"
-	httpdto "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/audit_gateway/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/http_client"
+	httpdto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/audit_gateway/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 )
 
 // createAuditPrepare prepares a request for creating an audit event.

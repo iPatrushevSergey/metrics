@@ -1,12 +1,12 @@
 package bootstrap
 
 import (
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/option"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/factory"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/service"
-	metricpresfactory "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/option"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/service"
+	metricpresfactory "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
 )
 
 // UseCaseFactory provides all module use cases needed by the composition root.

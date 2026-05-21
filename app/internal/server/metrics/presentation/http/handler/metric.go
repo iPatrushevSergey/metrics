@@ -9,11 +9,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
-	appdto "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
-	httpdto "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/http/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/presentation/factory"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
+	appdto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	httpdto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/http/dto"
 )
 
 const metricsHTMLTemplate = `

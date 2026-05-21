@@ -7,9 +7,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/file/audit/converter"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/dto"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application/port"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/audit/converter"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 )
 
 var errAuditFileClosed = errors.New("audit file repository closed")
