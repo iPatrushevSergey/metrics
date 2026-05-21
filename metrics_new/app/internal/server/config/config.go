@@ -20,7 +20,13 @@ import (
 type Config struct {
 	Logger logger.Config   `mapstructure:"logger"`
 	Server Server          `mapstructure:"server"`
+	Audit  Audit           `mapstructure:"audit"`
 	DB     postgres.Config `mapstructure:"database"`
+}
+
+// Audit holds audit fan-out and delivery settings.
+type Audit struct {
+	AuditSubSize int `mapstructure:"audit_sub_size"`
 }
 
 // Server holds server settings.
@@ -60,6 +66,7 @@ func LoadConfig() (Config, error) {
 	fs.String("audit-file", "", "the path to the file where the audit logs are saved")
 	fs.String("audit-url", "", "the full URL where the audit logs are sent")
 	fs.String("audit-http-timeout", "", "audit HTTP timeout (seconds or duration)")
+	fs.Int("audit-sub-size", 0, "audit subscriber channel buffer size per sink")
 	fs.String("shutdown-timeout", "", "graceful shutdown timeout (seconds or duration)")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -191,6 +198,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.audit_url", "")
 	v.SetDefault("server.audit_http_timeout", "2s")
 
+	v.SetDefault("audit.audit_sub_size", 500)
+
 	v.SetDefault("database.uri", "")
 	v.SetDefault("database.max_conns", 25)
 	v.SetDefault("database.min_conns", 5)
@@ -219,6 +228,7 @@ func bindEnv(v *viper.Viper) {
 	_ = v.BindEnv("server.audit_file", "AUDIT_FILE")
 	_ = v.BindEnv("server.audit_url", "AUDIT_URL")
 	_ = v.BindEnv("server.audit_http_timeout", "AUDIT_HTTP_TIMEOUT")
+	_ = v.BindEnv("audit.audit_sub_size", "AUDIT_SUB_SIZE")
 
 	_ = v.BindEnv("database.uri", "DATABASE_DSN")
 	_ = v.BindEnv("database.max_conns", "DB_MAX_CONNS")
@@ -280,6 +290,13 @@ func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
 		}
 		v.Set("server.enable_retry", retryVal)
 	}
+	if _, ok := os.LookupEnv("AUDIT_SUB_SIZE"); !ok && fs.Changed("audit-sub-size") {
+		subSize, err := fs.GetInt("audit-sub-size")
+		if err != nil {
+			return fmt.Errorf("flag audit-sub-size: %w", err)
+		}
+		v.Set("audit.audit_sub_size", subSize)
+	}
 	return nil
 }
 
@@ -308,6 +325,9 @@ func finalizeConfig(cfg *Config) error {
 	}
 	if s.AuditHTTPTimeout < 0 {
 		return fmt.Errorf("audit http timeout must be >= 0, got %s", s.AuditHTTPTimeout)
+	}
+	if cfg.Audit.AuditSubSize <= 0 {
+		return fmt.Errorf("audit sub size must be > 0, got %d", cfg.Audit.AuditSubSize)
 	}
 	return nil
 }
