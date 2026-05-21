@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	postgreskit "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/repository/postgres"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/adapters/retry"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/pkg/testutil"
-	metricrepo "github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/adapters/repository/postgres"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/application"
-	"github.com/iPatrushevSergey/metrics/metrics_new/app/internal/server/metrics/domain/entity"
+	postgreskit "github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/repository/postgres"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/testutil"
+	metricrepo "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/postgres"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/entity"
 )
 
 const (
