@@ -26,7 +26,7 @@ func NewAuditRemoteSubscriber(
 
 // Run sends audit events to the remote endpoint.
 func (w *AuditRemoteSubscriber) Run(ctx context.Context) {
-	uc := w.useCases.SendAuditRemoteUseCase()
+	uc := w.useCases.CreateRemoteAuditUseCase()
 	if uc == nil {
 		return
 	}
