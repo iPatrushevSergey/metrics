@@ -16,6 +16,6 @@ func RegisterRoutes(r *gin.Engine, ucFactory factory.UseCaseFactory, log port.Lo
 	r.POST("/update/", metricHandler.UpdateJSON)
 	r.POST("/updates/", metricHandler.UpdatesJSON)
 	r.POST("/value/", metricHandler.GetJSON)
-	r.POST("/update/:type/:name/:value", metricHandler.Update)
-	r.GET("/value/:type/:name", metricHandler.GetValue)
+	r.POST("/update/:type/:name/:value/", metricHandler.Update)
+	r.GET("/value/:type/:name/", metricHandler.GetValue)
 }
