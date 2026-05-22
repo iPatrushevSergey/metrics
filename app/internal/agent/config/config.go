@@ -1,3 +1,4 @@
+// Package config loads agent settings from env, flags, and YAML.
 package config
 
 import (

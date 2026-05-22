@@ -1,3 +1,4 @@
+// Package factory builds collector use cases.
 package factory
 
 import (

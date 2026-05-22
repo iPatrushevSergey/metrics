@@ -1,4 +1,4 @@
-// Package service holds metric helpers outside entity state mutations (compare balance MetricService ↔ entity methods).
+// Package service holds metric domain logic.
 package service
 
 import (

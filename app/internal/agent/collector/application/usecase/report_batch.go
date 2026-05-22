@@ -1,3 +1,4 @@
+// Package usecase implements collector application scenarios.
 package usecase
 
 import (

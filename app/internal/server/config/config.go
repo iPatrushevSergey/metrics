@@ -1,3 +1,4 @@
+// Package config loads server settings from env, flags, and YAML.
 package config
 
 import (

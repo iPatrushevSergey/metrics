@@ -1,3 +1,4 @@
+// Package sampler reads runtime and gopsutil metrics into domain entities.
 package sampler
 
 import (

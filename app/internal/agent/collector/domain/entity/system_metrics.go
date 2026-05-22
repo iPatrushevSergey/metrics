@@ -1,3 +1,4 @@
+// Package entity holds in-memory system metrics.
 package entity
 
 import "runtime"

@@ -1,3 +1,4 @@
+// Package worker runs periodic collector tasks.
 package worker
 
 import (

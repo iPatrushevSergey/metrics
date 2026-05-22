@@ -1,3 +1,4 @@
+// Package worker runs background tasks.
 package worker
 
 import (

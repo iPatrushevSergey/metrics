@@ -1,3 +1,4 @@
+// Package usecase implements metrics server application scenarios.
 package usecase
 
 import (

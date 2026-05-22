@@ -1,3 +1,4 @@
+// Package port defines collector application interfaces.
 package port
 
 import "context"

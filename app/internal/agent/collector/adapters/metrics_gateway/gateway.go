@@ -1,3 +1,4 @@
+// Package metrics_gateway sends metric batches to the metrics server.
 package metrics_gateway
 
 import (

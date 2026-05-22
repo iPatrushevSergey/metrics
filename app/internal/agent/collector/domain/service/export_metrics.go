@@ -1,3 +1,4 @@
+// Package service contains domain logic for preparing metrics export payloads.
 package service
 
 import (
