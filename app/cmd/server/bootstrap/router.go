@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/compression"
@@ -36,6 +37,8 @@ func NewRouter(ucFactory UseCaseFactory, log port.Logger, key string, priv *rsa.
 	}
 
 	r.Use(logger.Logger(log, nil))
+
+	pprof.Register(r)
 
 	metricrouter.RegisterRoutes(r, ucFactory, log)
 	return r, nil
