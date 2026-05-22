@@ -4,20 +4,15 @@ package testutil
 
 import (
 	"context"
-	"database/sql"
-	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/migrate"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
@@ -62,23 +57,7 @@ func SetupPostgres(tb testing.TB) *pgxpool.Pool {
 
 	tb.Cleanup(func() { pool.Close() })
 
-	applyMigrations(tb, dsn, migrationsDir())
+	require.NoError(tb, migrate.Up(dsn, migrate.MigrationsMetricsDir()), "failed to apply migrations")
 
 	return pool
-}
-
-func applyMigrations(tb testing.TB, dsn, dir string) {
-	tb.Helper()
-
-	db, err := sql.Open("pgx", dsn)
-	require.NoError(tb, err, "failed to open db for migrations")
-	defer db.Close()
-
-	require.NoError(tb, goose.SetDialect("postgres"), "failed to set migration dialect")
-	require.NoError(tb, goose.Up(db, dir), "failed to apply migrations")
-}
-
-func migrationsDir() string {
-	_, filename, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(filename), "..", "..", "..", "..", "migrations", "metrics")
 }
