@@ -1,2 +1,30 @@
+logger:
+  level: info
+
+server:
+  address: "127.0.0.1:8080"
+  store_interval: "300s"
+  shutdown_timeout: "10s"
+  store_file: "metrics.json"
+  restore: true
+  enable_retry: true
+  key: ""
+  crypto_key: ""
+  audit_file: ""
+  audit_url: ""
+  audit_http_timeout: "2s"
+
 audit:
   audit_sub_size: 500
+
+database:
+  uri: ""
+  max_conns: 25
+  min_conns: 5
+  max_conn_life: "1h"
+  max_conn_idle: "30m"
+  health_check: "1m"
+  retry:
+    max_retries: 3
+    base_delay: "100ms"
+    max_delay: "2s"
