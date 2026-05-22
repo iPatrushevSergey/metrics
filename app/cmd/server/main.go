@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+	printBuildInfo()
+
 	if err := bootstrap.Run(); err != nil {
 		log.Fatalf("server: %v", err)
 	}
