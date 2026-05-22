@@ -1,3 +1,4 @@
+// Package bootstrap is the composition root for the metrics collection agent.
 package bootstrap
 
 import (
@@ -12,7 +13,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
 )
 
-// Run runs the agent application.
+// Run loads configuration, wires dependencies and runs the application.
 func Run() error {
 	cfg, err := config.LoadConfig()
 	if err != nil {

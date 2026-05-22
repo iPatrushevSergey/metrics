@@ -1,3 +1,4 @@
+// Package router registers metrics HTTP routes on a Gin engine.
 package router
 
 import (

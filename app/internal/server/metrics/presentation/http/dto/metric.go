@@ -1,3 +1,4 @@
+// Package dto holds HTTP request and response bodies.
 package dto
 
 // MetricRequest is the HTTP request body for a single metric.

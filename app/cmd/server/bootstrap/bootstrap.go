@@ -1,3 +1,4 @@
+// Package bootstrap is the composition root for the metrics HTTP server.
 package bootstrap
 
 import (
@@ -38,7 +39,7 @@ const (
 	StorageMemory                      // In-memory storage
 )
 
-// Run starts the server.
+// Run loads configuration, wires dependencies and runs the application.
 func Run() error {
 	// Load config.
 	cfg, err := config.LoadConfig()

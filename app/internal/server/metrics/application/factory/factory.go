@@ -1,3 +1,4 @@
+// Package factory builds metrics application use cases from infrastructure ports.
 package factory
 
 import (

@@ -1,3 +1,4 @@
+// Package handler exposes the metrics API.
 package handler
 
 import (
