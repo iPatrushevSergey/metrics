@@ -15,6 +15,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/repository/postgres"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/migrate"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/option"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/config"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/audit"
@@ -91,6 +92,9 @@ func Run() error {
 	// Initialize database pool.
 	var pool *pgxpool.Pool
 	if storageMode == StoragePostgres {
+		if err := migrate.Up(cfg.DB.Pool.URI, migrate.MigrationsMetricsDir()); err != nil {
+			return fmt.Errorf("apply migrations: %w", err)
+		}
 		pool, err = postgres.NewPool(context.Background(), cfg.DB.Pool)
 		if err != nil {
 			return fmt.Errorf("init database pool: %w", err)
