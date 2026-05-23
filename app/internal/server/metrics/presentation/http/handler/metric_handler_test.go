@@ -39,6 +39,27 @@ func TestMetricHandler_PingDB(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestMetricHandler_PingDB_fail(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	log := portmocks.NewMockLogger(ctrl)
+	log.EXPECT().Error(gomock.Any(), gomock.Any()).Times(1)
+
+	factory := stubUseCaseFactory{
+		pingDB: stubUseCase[struct{}, struct{}]{err: application.ErrInternal},
+	}
+	h := NewMetricHandler(factory, log)
+
+	r := gin.New()
+	r.GET("/ping", h.PingDB)
+
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
 func TestMetricHandler_GetValue(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctrl := gomock.NewController(t)
@@ -61,6 +82,22 @@ func TestMetricHandler_GetValue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "42", w.Body.String())
+}
+
+func TestMetricHandler_UpdateJSON_badRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	log := portmocks.NewMockLogger(ctrl)
+
+	h := NewMetricHandler(stubUseCaseFactory{}, log)
+	r := gin.New()
+	r.POST("/update/", h.UpdateJSON)
+
+	req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewReader([]byte("{")))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestMetricHandler_UpdateJSON(t *testing.T) {
