@@ -69,3 +69,18 @@ func TestLoadRSAKeysFromFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, pub)
 }
+
+func TestLoadRSAKeysFromFile_invalid(t *testing.T) {
+	dir := t.TempDir()
+	bad := filepath.Join(dir, "bad.pem")
+	require.NoError(t, os.WriteFile(bad, []byte("not a key"), 0600))
+
+	_, err := LoadRSAPrivateKeyFromFile(bad)
+	assert.Error(t, err)
+
+	_, err = LoadRSAPublicKeyFromFile(bad)
+	assert.Error(t, err)
+
+	_, err = LoadRSAPrivateKeyFromFile(filepath.Join(dir, "missing.pem"))
+	assert.Error(t, err)
+}
