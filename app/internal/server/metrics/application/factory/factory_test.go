@@ -6,9 +6,11 @@ import (
 	pkginmemory "github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/metrics"
 	metricinmemory "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/inmemory"
+	portmocks "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port/mocks"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/service"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestNewMetricUseCases(t *testing.T) {
@@ -35,4 +37,20 @@ func TestNewMetricUseCases_withFileRepo(t *testing.T) {
 	})
 	assert.NotNil(t, uc.MetricsSnapshot)
 	assert.NotNil(t, uc.RestoreMetricsFromFile)
+}
+
+func TestNewMetricUseCases_withAudit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	auditFile := portmocks.NewMockAuditFileRepository(ctrl)
+	auditGW := portmocks.NewMockAuditGateway(ctrl)
+
+	uc := NewMetricUseCases(MetricUseCasesParams{
+		MetricRepo:     metricinmemory.NewMetricMemoryRepository(),
+		MetricSvc:      service.MetricService{},
+		Transactor:     pkginmemory.NewTransactor(),
+		AuditFileRepo:  auditFile,
+		AuditGateway:   auditGW,
+	})
+	assert.NotNil(t, uc.RecordAuditToFile)
+	assert.NotNil(t, uc.CreateRemoteAudit)
 }
