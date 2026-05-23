@@ -46,3 +46,19 @@ func TestIntegrity_noHashers(t *testing.T) {
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
+
+func TestIntegrity_badHash(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewSHA256Integrity("secret")
+
+	r := gin.New()
+	r.Use(Integrity(logger.NewNopLogger(), h))
+	r.POST("/", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("body")))
+	req.Header.Set(HashSHA256Header, "bad")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
