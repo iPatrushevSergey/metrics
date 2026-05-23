@@ -43,4 +43,22 @@ func TestServerMetricsComponent_batchUpsertAndGetJSON(t *testing.T) {
 	assert.InDelta(t, 512, *got.Value, 0.001)
 }
 
+func TestServerMetricsComponent_getValueText(t *testing.T) {
+	srv := testsupport.StartMetricsServer(t)
+	client := srv.Client()
+
+	batch, err := json.Marshal([]serverdto.MetricRequest{
+		{ID: "x", MType: "gauge", Value: ptr(3.0)},
+	})
+	require.NoError(t, err)
+	resp, err := client.Post(srv.URL+"/updates/", "application/json", bytes.NewReader(batch))
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	resp, err = client.Get(srv.URL + "/value/gauge/x/")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func ptr(v float64) *float64 { return &v }
