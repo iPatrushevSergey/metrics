@@ -56,6 +56,15 @@ func TestMetricMemoryRepository_batchAndQueries(t *testing.T) {
 	assert.Equal(t, v3, *got.Value)
 }
 
+func TestMetricMemoryRepository_createBatchDuplicate(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMetricMemoryRepository()
+	v := 1.0
+	m := entity.Metric{ID: "x", MType: entity.Gauge, Value: &v}
+	require.NoError(t, repo.Create(ctx, m))
+	assert.ErrorIs(t, repo.CreateBatchWithUnnest(ctx, []entity.Metric{m}), application.ErrAlreadyExists)
+}
+
 func TestMetricMemoryRepository_createDuplicate(t *testing.T) {
 	ctx := context.Background()
 	repo := NewMetricMemoryRepository()
@@ -69,4 +78,37 @@ func TestMetricMemoryRepository_GetByIDs_empty(t *testing.T) {
 	got, err := NewMetricMemoryRepository().GetByIDs(context.Background(), nil)
 	require.NoError(t, err)
 	assert.Empty(t, got)
+}
+
+func TestMetricMemoryRepository_Update_notFound(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMetricMemoryRepository()
+	v := 1.0
+	err := repo.Update(ctx, entity.Metric{ID: "x", MType: entity.Gauge, Value: &v})
+	assert.ErrorIs(t, err, application.ErrNotFound)
+}
+
+func TestMetricMemoryRepository_batchWriteVariants(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMetricMemoryRepository()
+	v1, v2, v3 := 1.0, 2.0, 3.0
+
+	require.NoError(t, repo.CreateBatchWithCopy(ctx, []entity.Metric{
+		{ID: "a", MType: entity.Gauge, Value: &v1},
+	}))
+	require.NoError(t, repo.CreateBatchWithPrepare(ctx, []entity.Metric{
+		{ID: "b", MType: entity.Gauge, Value: &v2},
+	}))
+	require.NoError(t, repo.UpdateBatchWithParams(ctx, []entity.Metric{
+		{ID: "a", MType: entity.Gauge, Value: &v3},
+	}))
+	require.NoError(t, repo.UpdateBatchWithCopy(ctx, []entity.Metric{
+		{ID: "b", MType: entity.Gauge, Value: &v3},
+	}))
+	require.NoError(t, repo.UpdateBatchWithPrepare(ctx, []entity.Metric{
+		{ID: "a", MType: entity.Gauge, Value: &v2},
+	}))
+	require.NoError(t, repo.UpdateBatchWithUnnest(ctx, []entity.Metric{
+		{ID: "b", MType: entity.Gauge, Value: &v2},
+	}))
 }
