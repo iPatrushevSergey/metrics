@@ -27,3 +27,34 @@ func TestMetric_ValidateMetricValues(t *testing.T) {
 
 	assert.Error(t, (Metric{MType: Gauge}).ValidateMetricValues())
 }
+
+func TestNewMetric_counter(t *testing.T) {
+	m, err := NewMetric(Counter, "hits", "3")
+	require.NoError(t, err)
+	assert.Equal(t, int64(3), *m.Delta)
+}
+
+func TestMetric_FormatValueAsString(t *testing.T) {
+	v := 1.5
+	s, err := (Metric{MType: Gauge, Value: &v}).FormatValueAsString()
+	require.NoError(t, err)
+	assert.Equal(t, "1.5", s)
+
+	d := int64(7)
+	s, err = (Metric{MType: Counter, Delta: &d}).FormatValueAsString()
+	require.NoError(t, err)
+	assert.Equal(t, "7", s)
+}
+
+func TestMetric_ApplyUpdate_counter(t *testing.T) {
+	d1, d2 := int64(1), int64(2)
+	m := Metric{MType: Counter, Delta: &d1}
+	require.NoError(t, m.ApplyUpdate(Metric{MType: Counter, Delta: &d2}))
+	assert.Equal(t, int64(3), *m.Delta)
+}
+
+func TestMetric_MatchMetricTypes(t *testing.T) {
+	m := Metric{MType: Gauge}
+	assert.NoError(t, m.MatchMetricTypes(Gauge))
+	assert.Error(t, m.MatchMetricTypes(Counter))
+}
