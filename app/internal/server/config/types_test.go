@@ -22,6 +22,11 @@ func TestAddress_Set_invalid(t *testing.T) {
 	assert.Error(t, a.Set("localhost"))
 }
 
+func TestAddress_String(t *testing.T) {
+	a := Address{Host: "localhost", Port: 8080}
+	assert.Equal(t, "localhost:8080", a.String())
+}
+
 func TestDuration_Set(t *testing.T) {
 	var d Duration
 	require.NoError(t, d.Set("5"))
