@@ -43,4 +43,21 @@ func TestGetMetric_Execute(t *testing.T) {
 
 		assert.ErrorIs(t, err, application.ErrNotFound)
 	})
+
+	t.Run("bad type", func(t *testing.T) {
+		uc := NewGetMetric(nil, service.MetricService{})
+		_, err := uc.Execute(ctx, dto.GetMetricInput{ID: "x", MType: "unknown"})
+		assert.ErrorIs(t, err, application.ErrBadMetricType)
+	})
+
+	t.Run("type mismatch", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		v := 1.0
+		reader := mocks.NewMockMetricReader(ctrl)
+		reader.EXPECT().GetByID(ctx, "a").Return(entity.Metric{ID: "a", MType: entity.Gauge, Value: &v}, nil)
+
+		uc := NewGetMetric(reader, service.MetricService{})
+		_, err := uc.Execute(ctx, dto.GetMetricInput{ID: "a", MType: "counter"})
+		assert.ErrorIs(t, err, application.ErrNotFound)
+	})
 }
