@@ -55,3 +55,12 @@ func TestMetricMemoryRepository_batchAndQueries(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, v3, *got.Value)
 }
+
+func TestMetricMemoryRepository_createDuplicate(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMetricMemoryRepository()
+	v := 1.0
+	m := entity.Metric{ID: "x", MType: entity.Gauge, Value: &v}
+	require.NoError(t, repo.Create(ctx, m))
+	assert.ErrorIs(t, repo.Create(ctx, m), application.ErrAlreadyExists)
+}
