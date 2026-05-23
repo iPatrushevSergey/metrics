@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/audit"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/metrics"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
@@ -53,4 +56,28 @@ func TestUpdateMetric_Execute_badValue(t *testing.T) {
 		MType: "gauge", ID: "x", Value: "not-a-number",
 	})
 	assert.ErrorIs(t, err, application.ErrBadMetricValue)
+}
+
+func TestUpdateMetric_Execute_withFileSnapshot(t *testing.T) {
+	ctx := context.Background()
+	repo := inmemory.NewMetricMemoryRepository()
+	fileRepo := metrics.NewMetricFileRepository(t.TempDir() + "/m.json")
+
+	uc := NewUpdateMetric(repo, service.MetricService{}, fileRepo, nil)
+	_, err := uc.Execute(ctx, dto.UpdateMetricInput{MType: "gauge", ID: "f", Value: "1"})
+	require.NoError(t, err)
+
+	all, err := fileRepo.LoadAll(ctx)
+	require.NoError(t, err)
+	require.Len(t, all, 1)
+}
+
+func TestUpdateMetric_Execute_withAudit(t *testing.T) {
+	ctx := context.Background()
+	repo := inmemory.NewMetricMemoryRepository()
+	pub := audit.NewAuditEventPublisher(logger.NewNopLogger(), 10)
+
+	uc := NewUpdateMetric(repo, service.MetricService{}, nil, pub)
+	_, err := uc.Execute(ctx, dto.UpdateMetricInput{MType: "gauge", ID: "a", Value: "1"})
+	require.NoError(t, err)
 }
