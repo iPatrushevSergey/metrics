@@ -250,4 +250,82 @@ func TestMetricHandler_GetJSON_notFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestMetricHandler_GetValue_notFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	log := portmocks.NewMockLogger(ctrl)
+
+	factory := stubUseCaseFactory{
+		getMetricValue: stubUseCase[dto.GetMetricValueInput, string]{err: application.ErrNotFound},
+	}
+	h := NewMetricHandler(factory, log)
+
+	r := gin.New()
+	r.GET("/value/:type/:name/", h.GetValue)
+
+	req := httptest.NewRequest(http.MethodGet, "/value/gauge/missing/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestMetricHandler_UpdateJSON_missingID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewMetricHandler(stubUseCaseFactory{}, portmocks.NewMockLogger(gomock.NewController(t)))
+
+	r := gin.New()
+	r.POST("/update/", h.UpdateJSON)
+
+	body := []byte(`{"id":"","type":"gauge"}`)
+	req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestMetricHandler_Update_badRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	log := portmocks.NewMockLogger(ctrl)
+
+	factory := stubUseCaseFactory{
+		updateMetric: stubUseCase[dto.UpdateMetricInput, struct{}]{err: application.ErrBadMetricType},
+	}
+	h := NewMetricHandler(factory, log)
+
+	r := gin.New()
+	r.POST("/update/:type/:name/:value/", h.Update)
+
+	req := httptest.NewRequest(http.MethodPost, "/update/bad/cpu/1/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestMetricHandler_GetAll_error(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	log := portmocks.NewMockLogger(ctrl)
+	log.EXPECT().Error(gomock.Any(), gomock.Any()).Times(1)
+
+	factory := stubUseCaseFactory{
+		getAllMetrics: stubUseCase[struct{}, []dto.MetricForDisplayOutput]{
+			err: application.ErrInternal,
+		},
+	}
+	h := NewMetricHandler(factory, log)
+
+	r := gin.New()
+	r.GET("/", h.GetAll)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
 func ptr(v float64) *float64 { return &v }
