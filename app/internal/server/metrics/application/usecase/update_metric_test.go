@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/inmemory"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/service"
 
@@ -43,4 +44,13 @@ func TestUpdateMetric_Execute_update(t *testing.T) {
 	got, err := repo.GetByID(ctx, "cpu")
 	require.NoError(t, err)
 	assert.Equal(t, 2.0, *got.Value)
+}
+
+func TestUpdateMetric_Execute_badValue(t *testing.T) {
+	repo := inmemory.NewMetricMemoryRepository()
+	uc := NewUpdateMetric(repo, service.MetricService{}, nil, nil)
+	_, err := uc.Execute(context.Background(), dto.UpdateMetricInput{
+		MType: "gauge", ID: "x", Value: "not-a-number",
+	})
+	assert.ErrorIs(t, err, application.ErrBadMetricValue)
 }
