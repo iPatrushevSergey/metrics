@@ -8,9 +8,11 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/audit"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/file/metrics"
 	metricinmemory "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/adapters/repository/inmemory"
+	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port/mocks"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/service"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestNewUseCaseFactory(t *testing.T) {
@@ -38,6 +40,21 @@ func TestNewUseCaseFactory(t *testing.T) {
 	assert.NotNil(t, f.RestoreMetricsFromFileUseCase())
 }
 
+func TestNewUseCaseFactory_withAudit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	f := NewUseCaseFactory(
+		WithMetricRepo(metricinmemory.NewMetricMemoryRepository()),
+		WithMetricSvc(service.MetricService{}),
+		WithTransactor(pkginmemory.NewTransactor()),
+		WithAuditFileRepo(mocks.NewMockAuditFileRepository(ctrl)),
+		WithAuditGateway(mocks.NewMockAuditGateway(ctrl)),
+	)
+
+	assert.NotNil(t, f.RecordAuditToFileUseCase())
+	assert.NotNil(t, f.CreateRemoteAuditUseCase())
+}
+
 func TestNewUseCaseFactory_missingRepoPanics(t *testing.T) {
 	assert.Panics(t, func() {
 		NewUseCaseFactory(WithTransactor(pkginmemory.NewTransactor()))
@@ -51,7 +68,13 @@ func TestWithOptions_setDeps(t *testing.T) {
 	WithMetricSvc(service.MetricService{})(&p)
 	WithTransactor(pkginmemory.NewTransactor())(&p)
 	WithSyncFileWrites(true)(&p)
+	WithMetricFileRepo(metrics.NewMetricFileRepository(t.TempDir() + "/m.json"))(&p)
+	WithAuditPublisher(audit.NewAuditEventPublisher(logger.NewNopLogger(), 1))(&p)
+
+	ctrl := gomock.NewController(t)
+	WithAuditGateway(mocks.NewMockAuditGateway(ctrl))(&p)
 
 	assert.Equal(t, repo, p.metricRepo)
 	assert.True(t, p.syncFileWrites)
+	assert.NotNil(t, p.auditPublisher)
 }
