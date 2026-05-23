@@ -31,4 +31,20 @@ func TestDuration_Set(t *testing.T) {
 	var d Duration
 	require.NoError(t, d.Set("5"))
 	assert.Equal(t, 5*time.Second, d.Duration)
+
+	require.NoError(t, d.Set("2s"))
+	assert.Equal(t, 2*time.Second, d.Duration)
+	assert.Equal(t, "2s", d.String())
+}
+
+func TestDuration_UnmarshalText(t *testing.T) {
+	var d Duration
+	require.NoError(t, d.UnmarshalText([]byte("3")))
+	assert.Equal(t, 3*time.Second, d.Duration)
+}
+
+func TestAddress_UnmarshalText(t *testing.T) {
+	var a Address
+	require.NoError(t, a.UnmarshalText([]byte("localhost:9090")))
+	assert.Equal(t, 9090, a.Port)
 }
