@@ -72,3 +72,15 @@ func TestMetricService_BuildCreateUpdateBatches(t *testing.T) {
 	assert.Equal(t, "b", creates[0].ID)
 	assert.Equal(t, v2, *updates[0].Value)
 }
+
+func TestMetricService_MergeMetricsByID_typeMismatch(t *testing.T) {
+	svc := MetricService{}
+	v := 1.0
+	_, err := svc.MergeMetricsByID([]entity.Metric{
+		{ID: "a", MType: entity.Gauge, Value: &v},
+		{ID: "a", MType: entity.Counter, Delta: ptrInt64(1)},
+	})
+	assert.Error(t, err)
+}
+
+func ptrInt64(v int64) *int64 { return &v }
