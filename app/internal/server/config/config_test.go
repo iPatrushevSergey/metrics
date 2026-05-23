@@ -12,6 +12,15 @@ func TestParseListenAddress(t *testing.T) {
 	addr, err := parseListenAddress("localhost:8080")
 	require.NoError(t, err)
 	assert.Equal(t, "localhost:8080", addr)
+
+	addr, err = parseListenAddress("http://127.0.0.1:9090")
+	require.NoError(t, err)
+	assert.Equal(t, "127.0.0.1:9090", addr)
+}
+
+func TestParseListenAddress_invalid(t *testing.T) {
+	_, err := parseListenAddress("not-an-address")
+	assert.Error(t, err)
 }
 
 func TestParseDuration(t *testing.T) {
@@ -22,6 +31,10 @@ func TestParseDuration(t *testing.T) {
 	d, err = parseDuration(5)
 	require.NoError(t, err)
 	assert.Equal(t, 5*time.Second, d)
+
+	d, err = parseDuration(int64(7))
+	require.NoError(t, err)
+	assert.Equal(t, 7*time.Second, d)
 }
 
 func TestFinalizeConfig_ok(t *testing.T) {
