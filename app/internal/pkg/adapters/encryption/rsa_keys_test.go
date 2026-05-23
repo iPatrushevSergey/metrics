@@ -1,0 +1,38 @@
+package encryption
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestLoadRSAKeysFromFile(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	privPath := filepath.Join(dir, "priv.pem")
+	pubPath := filepath.Join(dir, "pub.pem")
+
+	privPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	require.NoError(t, os.WriteFile(privPath, privPEM, 0600))
+
+	pubDER, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(t, err)
+	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER})
+	require.NoError(t, os.WriteFile(pubPath, pubPEM, 0600))
+
+	priv, err := LoadRSAPrivateKeyFromFile(privPath)
+	require.NoError(t, err)
+	require.NotNil(t, priv)
+
+	pub, err := LoadRSAPublicKeyFromFile(pubPath)
+	require.NoError(t, err)
+	require.NotNil(t, pub)
+}
