@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,4 +18,13 @@ func TestNewZapLogger(t *testing.T) {
 func TestNewZapLogger_invalidLevel(t *testing.T) {
 	_, err := NewZapLogger(Config{Level: "not-a-level"})
 	assert.Error(t, err)
+}
+
+func TestZapLogger_keyValuePairs(t *testing.T) {
+	log, err := NewZapLogger(Config{Level: "debug"})
+	require.NoError(t, err)
+
+	log.Debug("d", "k", "v", 42, "n")
+	log.Warn("w", "err", errors.New("test err"))
+	assert.NoError(t, log.Sync())
 }
