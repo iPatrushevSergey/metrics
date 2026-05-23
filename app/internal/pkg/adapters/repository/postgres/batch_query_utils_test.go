@@ -46,6 +46,9 @@ func TestBuildSendBatchQuery_empty(t *testing.T) {
 func TestBuildSendBatchQuery_invalidParams(t *testing.T) {
 	_, err := BuildSendBatchQuery[int](context.Background(), nil, "", "", 0, []int{1}, nil, nil)
 	assert.Error(t, err)
+
+	_, err = BuildSendBatchQuery[int](context.Background(), nil, "", "", 2, []int{1}, nil, []string{"::text"})
+	assert.Error(t, err)
 }
 
 func TestBuildSendBatchQuery_exec(t *testing.T) {
@@ -76,4 +79,14 @@ func TestNewCopyFromSource(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []any{20}, vals)
 	assert.False(t, src.Next())
+}
+
+func TestCopyFromSource_valuesPastEnd(t *testing.T) {
+	src := NewCopyFromSource([]int{1}, func(i int) []any { return []any{i} })
+	require.True(t, src.Next())
+	_, err := src.Values()
+	require.NoError(t, err)
+	require.False(t, src.Next())
+	_, err = src.Values()
+	assert.Error(t, err)
 }
