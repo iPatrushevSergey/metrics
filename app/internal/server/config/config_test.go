@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -82,4 +84,72 @@ func TestFinalizeConfig_invalidAuditSubSize(t *testing.T) {
 func TestParseDuration_invalid(t *testing.T) {
 	_, err := parseDuration("not-a-duration")
 	assert.Error(t, err)
+}
+
+func withArgs(t *testing.T, args ...string) {
+	t.Helper()
+	old := os.Args
+	os.Args = append([]string{"metrics-server"}, args...)
+	t.Cleanup(func() { os.Args = old })
+}
+
+func writeServerConfig(t *testing.T, yaml string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "server.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
+	return path
+}
+
+func TestLoadConfig_defaultValues(t *testing.T) {
+	path := writeServerConfig(t, `
+server:
+  address: "127.0.0.1:8080"
+  shutdown_timeout: "10s"
+audit:
+  audit_sub_size: 500
+`)
+	withArgs(t, "-c", path)
+	t.Setenv("ADDRESS", "")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, "127.0.0.1:8080", cfg.Server.Address)
+	assert.Equal(t, 500, cfg.Audit.AuditSubSize)
+}
+
+func TestLoadConfig_customYAML(t *testing.T) {
+	path := writeServerConfig(t, `
+logger:
+  level: warn
+server:
+  address: "localhost:9091"
+  shutdown_timeout: "3s"
+  store_interval: "0s"
+audit:
+  audit_sub_size: 42
+`)
+	withArgs(t, "-c", path)
+	t.Setenv("ADDRESS", "")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, "localhost:9091", cfg.Server.Address)
+	assert.Equal(t, 42, cfg.Audit.AuditSubSize)
+	assert.Equal(t, "warn", cfg.Logger.Level)
+}
+
+func TestLoadConfig_envAddress(t *testing.T) {
+	path := writeServerConfig(t, `
+server:
+  address: "127.0.0.1:8080"
+  shutdown_timeout: "10s"
+audit:
+  audit_sub_size: 10
+`)
+	withArgs(t, "-c", path)
+	t.Setenv("ADDRESS", "localhost:7070")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, "localhost:7070", cfg.Server.Address)
 }
