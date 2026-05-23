@@ -32,3 +32,11 @@ func TestRSAEncryptor_noPublicKey(t *testing.T) {
 	assert.False(t, ok)
 	assert.Equal(t, []byte("plain"), out)
 }
+
+func TestRSAEncryptor_Open_invalid(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	dec := NewRSAEncryptorWithPrivate(key)
+	_, err = dec.Open([]byte{1, 2, 3})
+	assert.Error(t, err)
+}
