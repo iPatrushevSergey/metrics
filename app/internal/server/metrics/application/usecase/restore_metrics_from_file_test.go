@@ -31,3 +31,15 @@ func TestRestoreMetricsFromFile_Execute(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, v, *got.Value)
 }
+
+func TestRestoreMetricsFromFile_Execute_emptyFile(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	fileRepo := mocks.NewMockMetricFileRepository(ctrl)
+	fileRepo.EXPECT().LoadAll(ctx).Return(nil, nil)
+
+	repo := inmemory.NewMetricMemoryRepository()
+	uc := NewRestoreMetricsFromFile(repo, fileRepo)
+	_, err := uc.Execute(ctx, struct{}{})
+	require.NoError(t, err)
+}
