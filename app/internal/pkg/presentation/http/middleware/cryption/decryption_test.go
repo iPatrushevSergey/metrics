@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,6 +24,16 @@ func (stubDecryptor) Matches(h http.Header) bool {
 
 func (stubDecryptor) Decrypt(body []byte) ([]byte, error) {
 	return body, nil
+}
+
+type failingDecryptor struct{}
+
+func (failingDecryptor) Matches(h http.Header) bool {
+	return h.Get("X-Fail") == "1"
+}
+
+func (failingDecryptor) Decrypt([]byte) ([]byte, error) {
+	return nil, errors.New("decrypt failed")
 }
 
 func TestDecryptRequests_withDecryptor(t *testing.T) {
@@ -76,6 +87,19 @@ func TestRSADecryptor_roundTrip(t *testing.T) {
 	plain, err := dec.Decrypt(sealed)
 	require.NoError(t, err)
 	assert.Equal(t, "secret", string(plain))
+}
+
+func TestDecryptRequests_decryptError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(DecryptRequests(logger.NewNopLogger(), failingDecryptor{}))
+	r.POST("/", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("x")))
+	req.Header.Set("X-Fail", "1")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestRSADecryptor_Matches_nilKey(t *testing.T) {
