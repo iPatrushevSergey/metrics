@@ -26,5 +26,6 @@ func TestZapLogger_keyValuePairs(t *testing.T) {
 
 	log.Debug("d", "k", "v", 42, "n")
 	log.Warn("w", "err", errors.New("test err"))
+	log.Error("e", "n", 1)
 	assert.NoError(t, log.Sync())
 }
