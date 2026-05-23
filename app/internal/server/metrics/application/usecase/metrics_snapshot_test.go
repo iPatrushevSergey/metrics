@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port/mocks"
@@ -31,4 +32,15 @@ func TestMetricsSnapshot_Execute(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+func TestMetricsSnapshot_Execute_readError(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	reader := mocks.NewMockMetricReader(ctrl)
+	reader.EXPECT().GetAll(ctx).Return(nil, errors.New("db"))
+
+	uc := NewMetricsSnapshot(reader, nil)
+	_, err := uc.Execute(ctx, struct{}{})
+	assert.Error(t, err)
 }
