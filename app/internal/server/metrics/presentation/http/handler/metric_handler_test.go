@@ -285,6 +285,20 @@ func TestMetricHandler_UpdateJSON_missingID(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestMetricHandler_Update_missingID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewMetricHandler(stubUseCaseFactory{}, portmocks.NewMockLogger(gomock.NewController(t)))
+
+	r := gin.New()
+	r.POST("/update/:type/:name/:value/", h.Update)
+
+	req := httptest.NewRequest(http.MethodPost, "/update/gauge//1/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestMetricHandler_Update_badRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctrl := gomock.NewController(t)
@@ -322,6 +336,77 @@ func TestMetricHandler_GetAll_error(t *testing.T) {
 	r.GET("/", h.GetAll)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestMetricHandler_UpdatesJSON_invalidJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewMetricHandler(stubUseCaseFactory{}, portmocks.NewMockLogger(gomock.NewController(t)))
+
+	r := gin.New()
+	r.POST("/updates/", h.UpdatesJSON)
+
+	req := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader([]byte("not-json")))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestMetricHandler_UpdatesJSON_missingID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewMetricHandler(stubUseCaseFactory{}, portmocks.NewMockLogger(gomock.NewController(t)))
+
+	r := gin.New()
+	r.POST("/updates/", h.UpdatesJSON)
+
+	body := []byte(`[{"id":"","type":"gauge"}]`)
+	req := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestMetricHandler_UpdatesJSON_badType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	factory := stubUseCaseFactory{
+		upsertMetricsBatch: stubUseCase[dto.UpsertMetricsBatchInput, struct{}]{
+			err: application.ErrBadMetricType,
+		},
+	}
+	h := NewMetricHandler(factory, portmocks.NewMockLogger(gomock.NewController(t)))
+
+	r := gin.New()
+	r.POST("/updates/", h.UpdatesJSON)
+
+	body := []byte(`[{"id":"a","type":"bad"}]`)
+	req := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestMetricHandler_UpdatesJSON_internalError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	log := portmocks.NewMockLogger(ctrl)
+	log.EXPECT().Error(gomock.Any(), gomock.Any()).Times(1)
+
+	factory := stubUseCaseFactory{
+		upsertMetricsBatch: stubUseCase[dto.UpsertMetricsBatchInput, struct{}]{err: application.ErrInternal},
+	}
+	h := NewMetricHandler(factory, log)
+
+	r := gin.New()
+	r.POST("/updates/", h.UpdatesJSON)
+
+	body := []byte(`[{"id":"a","type":"gauge","value":1}]`)
+	req := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader(body))
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
