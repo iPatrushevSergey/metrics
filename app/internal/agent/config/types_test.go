@@ -44,6 +44,11 @@ func TestAddress_URL(t *testing.T) {
 	assert.Equal(t, "http://localhost:8080", a.URL())
 }
 
+func TestAddress_String(t *testing.T) {
+	a := Address{Host: "localhost", Port: 8080}
+	assert.Equal(t, "localhost:8080", a.String())
+}
+
 func TestDuration_Set(t *testing.T) {
 	t.Run("integer seconds", func(t *testing.T) {
 		var d Duration
