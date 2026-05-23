@@ -53,3 +53,22 @@ func TestMetricService_CollectIDs(t *testing.T) {
 	ids := svc.CollectIDs([]entity.Metric{{ID: "a"}, {ID: "b"}})
 	assert.Equal(t, []string{"a", "b"}, ids)
 }
+
+func TestMetricService_BuildCreateUpdateBatches(t *testing.T) {
+	svc := MetricService{}
+	v1, v2 := 1.0, 2.0
+	existing := map[string]entity.Metric{
+		"a": {ID: "a", MType: entity.Gauge, Value: &v1},
+	}
+	merged := []entity.Metric{
+		{ID: "a", MType: entity.Gauge, Value: &v2},
+		{ID: "b", MType: entity.Gauge, Value: &v2},
+	}
+
+	creates, updates, err := svc.BuildCreateUpdateBatches(existing, merged)
+	require.NoError(t, err)
+	require.Len(t, creates, 1)
+	require.Len(t, updates, 1)
+	assert.Equal(t, "b", creates[0].ID)
+	assert.Equal(t, v2, *updates[0].Value)
+}
