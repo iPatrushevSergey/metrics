@@ -41,3 +41,12 @@ func TestUpsertMetric_Execute_update(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, v2, *got.Value)
 }
+
+func TestUpsertMetric_Execute_badValue(t *testing.T) {
+	repo := inmemory.NewMetricMemoryRepository()
+	uc := NewUpsertMetric(repo, service.MetricService{}, nil, nil)
+	_, err := uc.Execute(context.Background(), dto.UpsertMetricInput{
+		ID: "x", MType: "gauge", Value: nil,
+	})
+	assert.ErrorIs(t, err, application.ErrBadMetricValue)
+}
