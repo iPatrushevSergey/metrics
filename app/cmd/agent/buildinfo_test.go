@@ -10,3 +10,7 @@ func TestBuildNA(t *testing.T) {
 	assert.Equal(t, "N/A", buildNA(""))
 	assert.Equal(t, "dev", buildNA("dev"))
 }
+
+func TestPrintBuildInfo(t *testing.T) {
+	printBuildInfo()
+}
