@@ -64,3 +64,9 @@ func TestMetricMemoryRepository_createDuplicate(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, m))
 	assert.ErrorIs(t, repo.Create(ctx, m), application.ErrAlreadyExists)
 }
+
+func TestMetricMemoryRepository_GetByIDs_empty(t *testing.T) {
+	got, err := NewMetricMemoryRepository().GetByIDs(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
