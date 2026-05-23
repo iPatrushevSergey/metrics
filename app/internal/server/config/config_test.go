@@ -57,3 +57,16 @@ func TestFinalizeConfig_invalid(t *testing.T) {
 	}
 	assert.Error(t, finalizeConfig(&cfg2))
 }
+
+func TestFinalizeConfig_invalidAuditSubSize(t *testing.T) {
+	cfg := Config{
+		Server: Server{Address: "localhost:8080", ShutdownTimeout: time.Second},
+		Audit:  Audit{AuditSubSize: 0},
+	}
+	assert.Error(t, finalizeConfig(&cfg))
+}
+
+func TestParseDuration_invalid(t *testing.T) {
+	_, err := parseDuration("not-a-duration")
+	assert.Error(t, err)
+}
