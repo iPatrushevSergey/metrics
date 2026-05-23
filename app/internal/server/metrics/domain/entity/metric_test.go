@@ -58,3 +58,19 @@ func TestMetric_MatchMetricTypes(t *testing.T) {
 	assert.NoError(t, m.MatchMetricTypes(Gauge))
 	assert.Error(t, m.MatchMetricTypes(Counter))
 }
+
+func TestMetric_FormatValueAsString_errors(t *testing.T) {
+	_, err := (Metric{MType: Gauge}).FormatValueAsString()
+	assert.Error(t, err)
+
+	_, err = (Metric{MType: Counter}).FormatValueAsString()
+	assert.Error(t, err)
+
+	_, err = (Metric{MType: "unknown"}).FormatValueAsString()
+	assert.Error(t, err)
+}
+
+func TestMetric_ApplyUpdate_unsupported(t *testing.T) {
+	m := Metric{MType: Gauge}
+	assert.Error(t, m.ApplyUpdate(Metric{MType: "bad"}))
+}
