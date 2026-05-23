@@ -7,17 +7,10 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type nopLogger struct{}
-
-func (nopLogger) Debug(string, ...any) {}
-func (nopLogger) Info(string, ...any)  {}
-func (nopLogger) Warn(string, ...any)  {}
-func (nopLogger) Error(string, ...any) {}
-func (nopLogger) Sync() error          { return nil }
 
 func TestIntegrity_withHasher(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -28,7 +21,7 @@ func TestIntegrity_withHasher(t *testing.T) {
 	hash := h.Calculate(body)
 
 	r := gin.New()
-	r.Use(Integrity(nopLogger{}, h))
+	r.Use(Integrity(logger.NewNopLogger(), h))
 	r.POST("/", func(c *gin.Context) {
 		c.Data(http.StatusOK, "application/json", []byte(`{"ok":true}`))
 	})
