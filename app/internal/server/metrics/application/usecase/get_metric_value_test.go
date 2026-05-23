@@ -32,6 +32,18 @@ func TestGetMetricValue_Execute(t *testing.T) {
 		assert.Equal(t, "3.14", got)
 	})
 
+	t.Run("counter", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		d := int64(5)
+		reader := mocks.NewMockMetricReader(ctrl)
+		reader.EXPECT().GetByID(ctx, "hits").Return(entity.Metric{ID: "hits", MType: entity.Counter, Delta: &d}, nil)
+
+		uc := NewGetMetricValue(reader, service.MetricService{})
+		got, err := uc.Execute(ctx, dto.GetMetricValueInput{ID: "hits", MType: "counter"})
+		require.NoError(t, err)
+		assert.Equal(t, "5", got)
+	})
+
 	t.Run("not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		reader := mocks.NewMockMetricReader(ctrl)
