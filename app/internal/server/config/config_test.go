@@ -23,3 +23,37 @@ func TestParseDuration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5*time.Second, d)
 }
+
+func TestFinalizeConfig_ok(t *testing.T) {
+	cfg := Config{
+		Server: Server{
+			Address:          "localhost:8080",
+			ShutdownTimeout:  time.Second,
+			StoreInterval:    0,
+			AuditHTTPTimeout: 0,
+		},
+		Audit: Audit{AuditSubSize: 10},
+	}
+	require.NoError(t, finalizeConfig(&cfg))
+	assert.Equal(t, "localhost:8080", cfg.Server.Address)
+}
+
+func TestFinalizeConfig_invalid(t *testing.T) {
+	cfg := Config{
+		Server: Server{
+			Address:         "bad",
+			ShutdownTimeout: time.Second,
+		},
+		Audit: Audit{AuditSubSize: 1},
+	}
+	assert.Error(t, finalizeConfig(&cfg))
+
+	cfg2 := Config{
+		Server: Server{
+			Address:         "localhost:8080",
+			ShutdownTimeout: 0,
+		},
+		Audit: Audit{AuditSubSize: 1},
+	}
+	assert.Error(t, finalizeConfig(&cfg2))
+}
