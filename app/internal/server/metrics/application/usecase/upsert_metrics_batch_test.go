@@ -36,3 +36,15 @@ func TestUpsertMetricsBatch_Execute_create(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, got.Value)
 }
+
+func TestUpsertMetricsBatch_Execute_empty(t *testing.T) {
+	uc := NewUpsertMetricsBatch(
+		metricinmemory.NewMetricMemoryRepository(),
+		service.MetricService{},
+		pkginmemory.NewTransactor(),
+		nil,
+		nil,
+	)
+	_, err := uc.Execute(context.Background(), dto.UpsertMetricsBatchInput{})
+	require.NoError(t, err)
+}
