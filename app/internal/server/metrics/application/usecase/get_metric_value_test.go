@@ -44,6 +44,12 @@ func TestGetMetricValue_Execute(t *testing.T) {
 		assert.Equal(t, "5", got)
 	})
 
+	t.Run("bad type", func(t *testing.T) {
+		uc := NewGetMetricValue(nil, service.MetricService{})
+		_, err := uc.Execute(ctx, dto.GetMetricValueInput{ID: "x", MType: "bad"})
+		assert.ErrorIs(t, err, application.ErrBadMetricType)
+	})
+
 	t.Run("not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		reader := mocks.NewMockMetricReader(ctrl)
