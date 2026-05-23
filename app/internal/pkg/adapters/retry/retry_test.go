@@ -37,3 +37,13 @@ func TestDoWithRetry_retriesThenSucceeds(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, calls)
 }
+
+func TestDoWithRetry_exhausted(t *testing.T) {
+	want := errors.New("always")
+	err := DoWithRetry(context.Background(), func() error { return want },
+		WithMaxRetries(1),
+		WithConstantBackoff(time.Millisecond),
+		WithRetriableCheck(func(error) bool { return true }),
+	)
+	assert.ErrorIs(t, err, want)
+}
