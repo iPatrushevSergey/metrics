@@ -31,13 +31,15 @@ func TestMetricsGateway_MetricsUpdateBatch_empty(t *testing.T) {
 }
 
 func TestMetricsGateway_MetricsUpdateBatch_success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	wantRealIP := "10.1.2.3"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, wantRealIP, r.Header.Get("X-Real-IP"))
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(srv.Close)
 
 	gw := NewGateway(
-		MetricsGatewayConfig{Address: srv.URL},
+		MetricsGatewayConfig{Address: srv.URL, RealIP: wantRealIP},
 		srv.Client(),
 		compression.GzipCompressor{},
 		encryption.RSAEncryptor{},
