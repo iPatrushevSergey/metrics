@@ -11,6 +11,6 @@
     "crypto_key": "",
     "rate_limit": 0,
     "grpc_address": "127.0.0.1:3000",
-    "report_transport": "http"
+    "report_protocol": "http"
   }
 }
