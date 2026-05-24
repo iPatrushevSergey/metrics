@@ -16,7 +16,7 @@ func TrustedSubnet(subnet *net.IPNet) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		if !netutil.IPInSubnet(subnet, c.GetHeader("X-Real-IP")) {
+		if !netutil.IPInSubnet(subnet, c.GetHeader(netutil.RealIPHeader)) {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
