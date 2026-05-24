@@ -16,6 +16,9 @@
     "audit_http_timeout": "2s",
     "trusted_subnet": ""
   },
+  "grpc": {
+    "address": "127.0.0.1:3000"
+  },
   "audit": {
     "audit_sub_size": 500
   },
