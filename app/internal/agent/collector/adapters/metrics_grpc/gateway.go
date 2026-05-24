@@ -1,5 +1,5 @@
-// Package metrics_grpc sends metric batches to the server over gRPC.
-package metrics_grpc
+// Package metricsgrpc sends metric batches to the server over gRPC.
+package metricsgrpc
 
 import (
 	"context"

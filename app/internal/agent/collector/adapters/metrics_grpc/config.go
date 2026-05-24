@@ -1,4 +1,4 @@
-package metrics_grpc
+package metricsgrpc
 
 // MetricsGRPCGatewayConfig holds gRPC transport settings for the metrics gateway.
 type MetricsGRPCGatewayConfig struct {

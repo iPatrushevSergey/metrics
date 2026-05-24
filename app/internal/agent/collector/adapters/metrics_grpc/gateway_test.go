@@ -1,4 +1,4 @@
-package metrics_grpc
+package metricsgrpc
 
 import (
 	"context"

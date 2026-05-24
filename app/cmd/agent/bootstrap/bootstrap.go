@@ -71,7 +71,7 @@ func Run() error {
 
 	switch cfg.Agent.ReportProtocol {
 	case config.ReportProtocolGRPC:
-		grpcGateway, err := metrics_grpc.NewGateway(cfg.Agent.MetricsGRPCGatewayConfig)
+		grpcGateway, err := metricsgrpc.NewGateway(cfg.Agent.MetricsGRPCGatewayConfig)
 		if err != nil {
 			return fmt.Errorf("metrics grpc gateway: %w", err)
 		}
