@@ -13,6 +13,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/encryption"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/http_client"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/integrity"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/netutil"
 )
 
 // metricsUpdateBatchPrepare prepares a request for the metrics update batch.
@@ -64,7 +65,7 @@ func (c *metricsGateway) metricsUpdateBatchPrepare(metrics []dto.MetricUpdateInp
 	headers.Set("Content-Encoding", c.compressor.ContentEncoding())
 	headers.Set("Accept-Encoding", c.compressor.ContentEncoding())
 	if c.realIP != "" {
-		headers.Set("X-Real-IP", c.realIP)
+		headers.Set(netutil.RealIPHeader, c.realIP)
 	}
 	if hash := c.hasher.CalculateHash(jsonPlaintext); hash != "" {
 		headers.Set(integrity.HashSHA256Header, hash)
