@@ -4,12 +4,10 @@ package trustedsubnet
 import (
 	"net"
 	"net/http"
-	"strings"
 
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/netutil"
 	"github.com/gin-gonic/gin"
 )
-
-const realIPHeader = "X-Real-IP"
 
 // TrustedSubnet rejects requests when subnet is set and X-Real-IP is outside it.
 func TrustedSubnet(subnet *net.IPNet) gin.HandlerFunc {
@@ -18,8 +16,7 @@ func TrustedSubnet(subnet *net.IPNet) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		ip := net.ParseIP(strings.TrimSpace(c.GetHeader(realIPHeader)))
-		if ip == nil || !subnet.Contains(ip) {
+		if !netutil.IPInSubnet(subnet, c.GetHeader("X-Real-IP")) {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
