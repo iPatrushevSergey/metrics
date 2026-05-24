@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// RealIPHeader is the agent client IP in HTTP headers and gRPC metadata.
+const RealIPHeader = "X-Real-IP"
+
 // IPInSubnet checks if ip is inside subnet; true when subnet is nil.
 func IPInSubnet(subnet *net.IPNet, ip string) bool {
 	if subnet == nil {
