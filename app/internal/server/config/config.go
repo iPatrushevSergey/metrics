@@ -1,9 +1,10 @@
-// Package config loads server settings from env, flags, and YAML.
+// Package config loads server settings from env, flags, and YAML or JSON files.
 package config
 
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"strings"
@@ -43,6 +44,7 @@ type Server struct {
 	AuditFilePath    string        `mapstructure:"audit_file"`
 	AuditURL         string        `mapstructure:"audit_url"`
 	AuditHTTPTimeout time.Duration `mapstructure:"audit_http_timeout"`
+	TrustedSubnet    string        `mapstructure:"trusted_subnet"`
 }
 
 // LoadConfig loads server settings. Priority: env > flags > file > defaults.
@@ -50,7 +52,8 @@ func LoadConfig() (Config, error) {
 	fs := pflag.NewFlagSet("server", pflag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.StringP("address", "a", "", "listen address (host:port or http://host:port)")
-	fs.StringP("config", "c", "app/configs/server.yaml", "path to YAML config")
+	fs.StringP("config", "c", "app/configs/server.yaml", "path to YAML or JSON config")
+	fs.StringP("trusted-subnet", "t", "", "trusted CIDR for agent X-Real-IP (empty = no check)")
 	fs.StringP("log", "l", "", "logging level")
 	fs.StringP("store-interval", "i", "", "server data save interval (seconds or duration)")
 	fs.StringP("store-file", "f", "", "file path for metric storage")
@@ -198,6 +201,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.audit_file", "")
 	v.SetDefault("server.audit_url", "")
 	v.SetDefault("server.audit_http_timeout", "2s")
+	v.SetDefault("server.trusted_subnet", "")
 
 	v.SetDefault("audit.audit_sub_size", 500)
 
@@ -229,6 +233,7 @@ func bindEnv(v *viper.Viper) {
 	_ = v.BindEnv("server.audit_file", "AUDIT_FILE")
 	_ = v.BindEnv("server.audit_url", "AUDIT_URL")
 	_ = v.BindEnv("server.audit_http_timeout", "AUDIT_HTTP_TIMEOUT")
+	_ = v.BindEnv("server.trusted_subnet", "TRUSTED_SUBNET")
 	_ = v.BindEnv("audit.audit_sub_size", "AUDIT_SUB_SIZE")
 
 	_ = v.BindEnv("database.uri", "DATABASE_DSN")
@@ -255,6 +260,7 @@ func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
 		{"server.audit_url", "AUDIT_URL", "audit-url"},
 		{"server.audit_http_timeout", "AUDIT_HTTP_TIMEOUT", "audit-http-timeout"},
 		{"server.shutdown_timeout", "SHUTDOWN_TIMEOUT", "shutdown-timeout"},
+		{"server.trusted_subnet", "TRUSTED_SUBNET", "trusted-subnet"},
 	} {
 		if _, ok := os.LookupEnv(row.env); ok {
 			continue
@@ -315,6 +321,12 @@ func finalizeConfig(cfg *Config) error {
 	s.FileStoragePath = strings.TrimSpace(s.FileStoragePath)
 	s.AuditFilePath = strings.TrimSpace(s.AuditFilePath)
 	s.AuditURL = strings.TrimSpace(s.AuditURL)
+	s.TrustedSubnet = strings.TrimSpace(s.TrustedSubnet)
+	if s.TrustedSubnet != "" {
+		if _, _, err := net.ParseCIDR(s.TrustedSubnet); err != nil {
+			return fmt.Errorf("invalid trusted_subnet: %w", err)
+		}
+	}
 
 	cfg.DB.Pool.URI = strings.TrimSpace(cfg.DB.Pool.URI)
 
