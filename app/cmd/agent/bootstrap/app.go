@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_grpc"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/sampler"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
@@ -59,31 +60,44 @@ func (a *AgentApp) Run(shutdownCtx context.Context) error {
 
 	metricsRepo := inmemory.NewMetricsRepository()
 	metricsSampler := sampler.NewMetricsSampler()
-	metricsGateway := metrics_gateway.NewGateway(
-		a.cfg.Agent.MetricsGatewayConfig,
-		&http.Client{Timeout: a.cfg.Agent.MetricsGatewayConfig.HTTPTimeout},
-		compression.NewGzipCompressor(),
-		encryptor,
-		integrity.NewSHA256Hasher(a.cfg.Agent.Key),
-		retry.WithRetriableCheck(http_client.IsRetriable),
-		retry.WithMaxRetries(3),
-		retry.WithBackoffFunc(func(attempt int) time.Duration {
-			switch attempt {
-			case 0:
-				return 1 * time.Second
-			case 1:
-				return 3 * time.Second
-			default:
-				return 5 * time.Second
-			}
-		}),
-	)
 
-	var totalMetricsGateway port.MetricsGateway = metricsGateway
+	var totalMetricsGateway port.MetricsGateway
+	switch a.cfg.Agent.ReportProtocol {
+	case config.ReportProtocolGRPC:
+		grpcGateway, err := metrics_grpc.NewGateway(a.cfg.Agent.MetricsGRPCGatewayConfig)
+		if err != nil {
+			return fmt.Errorf("metrics grpc gateway: %w", err)
+		}
+		defer grpcGateway.Close()
+		totalMetricsGateway = grpcGateway
+		a.log.Info("report protocol: grpc", "address", a.cfg.Agent.MetricsGRPCGatewayConfig.Address)
+	default:
+		httpGateway := metrics_gateway.NewGateway(
+			a.cfg.Agent.MetricsGatewayConfig,
+			&http.Client{Timeout: a.cfg.Agent.MetricsGatewayConfig.HTTPTimeout},
+			compression.NewGzipCompressor(),
+			encryptor,
+			integrity.NewSHA256Hasher(a.cfg.Agent.Key),
+			retry.WithRetriableCheck(http_client.IsRetriable),
+			retry.WithMaxRetries(3),
+			retry.WithBackoffFunc(func(attempt int) time.Duration {
+				switch attempt {
+				case 0:
+					return 1 * time.Second
+				case 1:
+					return 3 * time.Second
+				default:
+					return 5 * time.Second
+				}
+			}),
+		)
+		totalMetricsGateway = httpGateway
+		a.log.Info("report protocol: http", "address", a.cfg.Agent.MetricsGatewayConfig.Address)
+	}
 	var bufferedMetricsGateway *metrics_gateway.BufferedMetricsGateway
 	if a.cfg.Agent.RateLimit > 0 {
 		var err error
-		bufferedMetricsGateway, err = metrics_gateway.NewBufferedMetricsGateway(metricsGateway, a.log, a.cfg.Agent.RateLimit, sendCtx)
+		bufferedMetricsGateway, err = metrics_gateway.NewBufferedMetricsGateway(totalMetricsGateway, a.log, a.cfg.Agent.RateLimit, sendCtx)
 		if err != nil {
 			return fmt.Errorf("buffered metrics gateway: %w", err)
 		}
