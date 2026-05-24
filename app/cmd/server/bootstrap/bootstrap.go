@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -234,8 +235,17 @@ func Run() error {
 	// Build use case factory.
 	useCases := NewUseCaseFactory(factoryOpts...)
 
+	// Initialize trusted subnet.
+	var trustedSubnet *net.IPNet
+	if cidr := cfg.Server.TrustedSubnet; cidr != "" {
+		_, trustedSubnet, err = net.ParseCIDR(cidr)
+		if err != nil {
+			return fmt.Errorf("trusted subnet: %w", err)
+		}
+	}
+
 	// Initialize router.
-	router, err := NewRouter(useCases, zl, cfg.Server.Key, priv)
+	router, err := NewRouter(useCases, zl, cfg.Server.Key, priv, trustedSubnet)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
