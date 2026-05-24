@@ -68,12 +68,14 @@ cd app
 
 | Файл | Назначение |
 |------|------------|
-| `app/configs/server.yaml` | сервер |
-| `app/configs/agent.yaml` | агент |
+| `app/configs/server.yaml` / `server.json` | сервер |
+| `app/configs/agent.yaml` / `agent.json` | агент |
 
-**Приоритет:** env → флаги → YAML → значения по умолчанию.
+Формат файла Viper определяет по расширению (`.yaml`, `.json` — одни и те же ключи).
 
-`make run-*` выполняет `cd app`, поэтому для YAML задай `CONFIG=configs/....yaml` (см. шаги выше) или флаг `-c`.
+**Приоритет:** env → флаги → файл → значения по умолчанию.
+
+`make run-*` выполняет `cd app`, поэтому задай `CONFIG=configs/server.yaml` или `CONFIG=configs/server.json` (см. шаги выше) либо `-c`.
 
 ### 3.1. Флаги сервера
 
@@ -93,7 +95,8 @@ go run -tags=go_json ./cmd/server -c configs/server.yaml \
 | Флаг | Env | Смысл |
 |------|-----|--------|
 | `-a` | `ADDRESS` | адрес прослушивания |
-| `-c` | `CONFIG` | путь к YAML |
+| `-c` | `CONFIG` | путь к YAML или JSON |
+| `-t` | `TRUSTED_SUBNET` | CIDR для `X-Real-IP` агента (при отсутствии - без проверки) |
 | `-l` | `LOG_LEVEL` | уровень логов |
 | `-i` | `STORE_INTERVAL` | интервал сброса на диск |
 | `-f` | `FILE_STORAGE_PATH` | файл с метриками |
@@ -102,6 +105,8 @@ go run -tags=go_json ./cmd/server -c configs/server.yaml \
 | `-k` | `KEY` | ключ HMAC |
 | `--crypto-key` | `CRYPTO_KEY` | PEM приватного RSA |
 | `--retry` | `ENABLE_RETRY` | retry запросов |
+
+Агент в каждый запрос к серверу добавляет заголовок `X-Real-IP` (IPv4 хоста). Если на сервере задан `trusted_subnet`, любой запрос вне подсети получает `403 Forbidden`.
 
 ### 3.2. Флаги агента
 
