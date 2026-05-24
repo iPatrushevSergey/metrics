@@ -28,8 +28,12 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/service"
+	metricspb "github.com/iPatrushevSergey/metrics/app/internal/pkg/grpc/metrics"
+	grpcinterceptors "github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/grpc/interceptors"
+	metricgrpc "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/grpc"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/lifecycle"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc"
 )
 
 // StorageMode defines the metrics persistence mode.
@@ -88,6 +92,7 @@ func Run() error {
 		"audit_url_configured", cfg.Server.AuditURL != "",
 		"audit_http_timeout", cfg.Server.AuditHTTPTimeout,
 		"audit_sub_size", cfg.Audit.AuditSubSize,
+		"grpc_address", cfg.GRPC.Address,
 	)
 
 	// Initialize database pool.
@@ -250,12 +255,27 @@ func Run() error {
 		return fmt.Errorf("router: %w", err)
 	}
 
+	var (
+		grpcListener net.Listener
+		grpcServer   *grpc.Server
+	)
+	if grpcAddr := strings.TrimSpace(cfg.GRPC.Address); grpcAddr != "" {
+		grpcListener, err = net.Listen("tcp", grpcAddr)
+		if err != nil {
+			return fmt.Errorf("grpc listen: %w", err)
+		}
+		grpcServer = grpc.NewServer(grpc.UnaryInterceptor(grpcinterceptors.TrustedSubnet(trustedSubnet)))
+		metricspb.RegisterMetricsServer(grpcServer, metricgrpc.NewMetricsService(useCases, zl))
+	}
+
 	// Initialize application.
 	app := &lifecycle.App{
 		Server: &http.Server{
 			Addr:    cfg.Server.Address,
 			Handler: router,
 		},
+		GRPCListener:      grpcListener,
+		GRPCServer:        grpcServer,
 		UseCases:          useCases,
 		Log:               zl,
 		ShutdownTimeout:   cfg.Server.ShutdownTimeout,
