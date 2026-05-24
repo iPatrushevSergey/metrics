@@ -19,6 +19,11 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway"
 )
 
+const (
+	ReportProtocolHTTP = "http"
+	ReportProtocolGRPC = "grpc"
+)
+
 type Config struct {
 	Logger logger.Config `mapstructure:"logger"`
 	Agent  Agent         `mapstructure:"agent"`
@@ -30,9 +35,11 @@ type Agent struct {
 	PollInterval                         time.Duration `mapstructure:"poll_interval"`
 	ReportInterval                       time.Duration `mapstructure:"report_interval"`
 	// RateLimit is the worker-pool size: max simultaneous outbound metric batch RPCs toward the server. Not "requests per second".
-	RateLimit int    `mapstructure:"rate_limit"`
-	Key       string `mapstructure:"key"`
-	CryptoKey string `mapstructure:"crypto_key"`
+	RateLimit      int    `mapstructure:"rate_limit"`
+	Key            string `mapstructure:"key"`
+	CryptoKey      string `mapstructure:"crypto_key"`
+	GRPCAddress    string `mapstructure:"grpc_address"`
+	ReportProtocol string `mapstructure:"report_protocol"`
 }
 
 // LoadConfig loads agent settings. Priority: env > flags > file > defaults.
@@ -48,6 +55,8 @@ func LoadConfig() (Config, error) {
 	fs.String("crypto-key", "", "path to RSA public key PEM for payload encryption")
 	fs.IntP("rate-limit", "l", 0, "concurrent batch workers (0 = sequential)")
 	fs.String("log", "", "logging level")
+	fs.String("grpc-address", "", "metrics server gRPC address (host:port)")
+	fs.String("report-protocol", "", "report protocol: http or grpc")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return Config{}, fmt.Errorf("flag parsing error: %w", err)
@@ -173,6 +182,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("agent.key", "")
 	v.SetDefault("agent.crypto_key", "")
 	v.SetDefault("agent.rate_limit", 0)
+	v.SetDefault("agent.grpc_address", "127.0.0.1:3000")
+	v.SetDefault("agent.report_protocol", ReportProtocolHTTP)
 }
 
 // bindEnv binds the environment variables to the configuration.
@@ -188,6 +199,8 @@ func bindEnv(v *viper.Viper) {
 	_ = v.BindEnv("agent.crypto_key", "CRYPTO_KEY")
 	_ = v.BindEnv("agent.rate_limit", "RATE_LIMIT")
 	_ = v.BindEnv("logger.level", "LOG_LEVEL")
+	_ = v.BindEnv("agent.grpc_address", "GRPC_ADDRESS")
+	_ = v.BindEnv("agent.report_protocol", "REPORT_PROTOCOL")
 }
 
 // applyFlagsWhenEnvUnset sets viper from CLI flags only when the matching env var is absent (env beats flags).
@@ -200,6 +213,8 @@ func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
 		{"agent.key", "KEY", "key"},
 		{"agent.crypto_key", "CRYPTO_KEY", "crypto-key"},
 		{"logger.level", "LOG_LEVEL", "log"},
+		{"agent.grpc_address", "GRPC_ADDRESS", "grpc-address"},
+		{"agent.report_protocol", "REPORT_PROTOCOL", "report-protocol"},
 	} {
 		if _, ok := os.LookupEnv(row.env); ok {
 			continue
@@ -238,5 +253,33 @@ func finalizeConfig(cfg *Config) error {
 	if a.RateLimit < 0 {
 		return fmt.Errorf("rate limit must be >= 0, got %d", a.RateLimit)
 	}
+
+	a.ReportProtocol = strings.ToLower(strings.TrimSpace(a.ReportProtocol))
+	if a.ReportProtocol == "" {
+		a.ReportProtocol = ReportProtocolHTTP
+	}
+	switch a.ReportProtocol {
+	case ReportProtocolHTTP, ReportProtocolGRPC:
+	default:
+		return fmt.Errorf(
+			"report protocol must be %q or %q, got %q",
+			ReportProtocolHTTP,
+			ReportProtocolGRPC,
+			a.ReportProtocol,
+		)
+	}
+
+	a.GRPCAddress = strings.TrimSpace(a.GRPCAddress)
+	if a.ReportProtocol == ReportProtocolGRPC {
+		if a.GRPCAddress == "" {
+			return fmt.Errorf("grpc address is required when report protocol is grpc")
+		}
+		var addr Address
+		if err := addr.Set("http://" + a.GRPCAddress); err != nil {
+			return fmt.Errorf("invalid grpc address: %w", err)
+		}
+		a.GRPCAddress = addr.String()
+	}
+
 	return nil
 }
