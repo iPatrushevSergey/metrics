@@ -66,14 +66,14 @@ func Run() error {
 
 	// Initialize logger.
 	var _ port.Logger = (*logger.ZapLogger)(nil)
-	zl, err := logger.NewZapLogger(cfg.Logger)
+	log, err := logger.NewZapLogger(cfg.Logger)
 	if err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
-	defer zl.Sync()
+	defer log.Sync()
 
 	// Log server startup details.
-	zl.Debug("starting server",
+	log.Debug("starting server",
 		"address", cfg.Server.Address,
 		"storage_mode", storageMode,
 		"database_configured", cfg.DB.Pool.URI != "",
@@ -189,7 +189,7 @@ func Run() error {
 
 	// Initialize audit publisher.
 	if auditFilePath != "" || auditURL != "" {
-		auditPublisher = audit.NewAuditEventPublisher(zl, cfg.Audit.AuditSubSize)
+		auditPublisher = audit.NewAuditEventPublisher(log, cfg.Audit.AuditSubSize)
 
 		// Initialize audit file repository.
 		if auditFilePath != "" {
@@ -250,7 +250,7 @@ func Run() error {
 	}
 
 	// Initialize router.
-	router, err := NewRouter(useCases, zl, cfg.Server.Key, priv, trustedSubnet)
+	router, err := NewRouter(useCases, log, cfg.Server.Key, priv, trustedSubnet)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
@@ -265,7 +265,7 @@ func Run() error {
 			return fmt.Errorf("grpc listen: %w", err)
 		}
 		grpcServer = grpc.NewServer(grpc.UnaryInterceptor(grpcinterceptors.TrustedSubnet(trustedSubnet)))
-		metricspb.RegisterMetricsServer(grpcServer, metricgrpc.NewMetricsService(useCases, zl))
+		metricspb.RegisterMetricsServer(grpcServer, metricgrpc.NewMetricsService(useCases, log))
 	}
 
 	// Initialize application.
@@ -277,7 +277,7 @@ func Run() error {
 		GRPCListener:      grpcListener,
 		GRPCServer:        grpcServer,
 		UseCases:          useCases,
-		Log:               zl,
+		Log:               log,
 		ShutdownTimeout:   cfg.Server.ShutdownTimeout,
 		FileStorage:       storageMode == StorageFile,
 		Restore:           cfg.Server.Restore,
