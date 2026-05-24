@@ -1,5 +1,5 @@
-// Package metrics_gateway sends metric batches to the metrics server.
-package metrics_gateway
+// Package metricsgateway sends metric batches to the metrics server.
+package metricsgateway
 
 import (
 	"context"
@@ -78,21 +78,12 @@ func (c *metricsGateway) MetricsUpdateBatch(ctx context.Context, metrics []dto.M
 		return err
 	}
 
-	var resp *http.Response
-
-	err = retry.DoWithRetry(ctx, func() error {
+	return retry.DoWithRetry(ctx, func() error {
 		r, sendErr := c.metricsUpdateBatchSend(ctx, prepared)
 		if sendErr != nil {
 			return sendErr
 		}
-		resp = r
-		return nil
+		defer r.Body.Close()
+		return c.metricsUpdateBatchProcessResponse(r)
 	}, c.retryOpts...)
-
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	return c.metricsUpdateBatchProcessResponse(resp)
 }
