@@ -270,8 +270,9 @@ func finalizeConfig(cfg *Config) error {
 		)
 	}
 
+	a.MetricsGatewayConfig.RealIP = strings.TrimSpace(a.MetricsGatewayConfig.RealIP)
 	a.MetricsGRPCGatewayConfig.Address = strings.TrimSpace(a.MetricsGRPCGatewayConfig.Address)
-	a.MetricsGRPCGatewayConfig.RealIP = strings.TrimSpace(a.MetricsGatewayConfig.RealIP)
+	a.MetricsGRPCGatewayConfig.RealIP = strings.TrimSpace(a.MetricsGRPCGatewayConfig.RealIP)
 	if a.ReportProtocol == ReportProtocolGRPC {
 		if a.MetricsGRPCGatewayConfig.Address == "" {
 			return fmt.Errorf("grpc address is required when report protocol is grpc")
