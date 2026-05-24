@@ -63,6 +63,9 @@ func (c *metricsGateway) metricsUpdateBatchPrepare(metrics []dto.MetricUpdateInp
 
 	headers.Set("Content-Encoding", c.compressor.ContentEncoding())
 	headers.Set("Accept-Encoding", c.compressor.ContentEncoding())
+	if c.realIP != "" {
+		headers.Set("X-Real-IP", c.realIP)
+	}
 	if hash := c.hasher.CalculateHash(jsonPlaintext); hash != "" {
 		headers.Set(integrity.HashSHA256Header, hash)
 	}
