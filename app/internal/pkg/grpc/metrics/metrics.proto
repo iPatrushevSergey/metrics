@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package metrics;
+
+option go_package = "github.com/iPatrushevSergey/metrics/app/internal/pkg/grpc/metrics;metrics";
+
+// Metric is a single metric update.
+message Metric {
+  string id = 1;
+  MType type = 2;
+  int64 delta = 3;
+  double value = 4;
+
+  enum MType {
+    GAUGE = 0;
+    COUNTER = 1;
+  }
+}
+
+// UpdateMetricsRequest carries a batch of metrics.
+message UpdateMetricsRequest {
+  repeated Metric metrics = 1;
+}
+
+// UpdateMetricsResponse confirms a successful update.
+message UpdateMetricsResponse {}
+
+// Metrics exposes metric update RPC.
+service Metrics {
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
+}
