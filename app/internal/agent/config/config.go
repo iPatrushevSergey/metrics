@@ -32,7 +32,7 @@ type Config struct {
 
 // Agent holds collector settings.
 type Agent struct {
-	metrics_gateway.MetricsGatewayConfig  `mapstructure:",squash"`
+	metricsgateway.MetricsGatewayConfig  `mapstructure:",squash"`
 	metrics_grpc.MetricsGRPCGatewayConfig `mapstructure:",squash"`
 	PollInterval                          time.Duration `mapstructure:"poll_interval"`
 	ReportInterval                        time.Duration `mapstructure:"report_interval"`

@@ -79,13 +79,13 @@ func Run() error {
 		gatewayCloser = grpcGateway
 		log.Info("report protocol: grpc", "address", cfg.Agent.MetricsGRPCGatewayConfig.Address)
 	default:
-		totalMetricsGateway = metrics_gateway.NewGateway(
+		totalMetricsGateway = metricsgateway.NewGateway(
 			cfg.Agent.MetricsGatewayConfig,
 			&http.Client{Timeout: cfg.Agent.MetricsGatewayConfig.HTTPTimeout},
 			compression.NewGzipCompressor(),
 			encryptor,
 			integrity.NewSHA256Hasher(cfg.Agent.Key),
-			retry.WithRetriableCheck(http_client.IsRetriable),
+			retry.WithRetriableCheck(httpclient.IsRetriable),
 			retry.WithMaxRetries(3),
 			retry.WithBackoffFunc(func(attempt int) time.Duration {
 				switch attempt {
@@ -102,9 +102,9 @@ func Run() error {
 	}
 
 	// Initialize rate-limited metrics gateway.
-	var bufferedMetricsGateway *metrics_gateway.BufferedMetricsGateway
+	var bufferedMetricsGateway *metricsgateway.BufferedMetricsGateway
 	if cfg.Agent.RateLimit > 0 {
-		bufferedMetricsGateway, err = metrics_gateway.NewBufferedMetricsGateway(
+		bufferedMetricsGateway, err = metricsgateway.NewBufferedMetricsGateway(
 			totalMetricsGateway, log, cfg.Agent.RateLimit, sendCtx,
 		)
 		if err != nil {

@@ -74,7 +74,6 @@ func (a *App) Start() {
 		a.Log.Info("server listening", "address", a.Server.Addr)
 		if err := a.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			a.Log.Error("server failed", "error", err)
-			os.Exit(1)
 		}
 	}()
 

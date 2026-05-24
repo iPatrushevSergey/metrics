@@ -1,4 +1,4 @@
-package metrics_gateway
+package metricsgateway
 
 import (
 	"bytes"
@@ -102,8 +102,8 @@ func (c *metricsGateway) metricsUpdateBatchSend(ctx context.Context, prepReq pre
 		msg = readErr.Error()
 	}
 
-	if http_client.IsRetriableHTTPStatus(resp.StatusCode) {
-		return nil, &http_client.RetriableStatusError{Code: resp.StatusCode}
+	if httpclient.IsRetriableHTTPStatus(resp.StatusCode) {
+		return nil, &httpclient.RetriableStatusError{Code: resp.StatusCode}
 	}
 	return nil, fmt.Errorf("HTTP %s: %s", resp.Status, msg)
 }

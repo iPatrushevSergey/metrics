@@ -25,8 +25,8 @@ import (
 func TestAgentMetricsGateway_ServerUpdatesContract(t *testing.T) {
 	srv := testsupport.StartMetricsServer(t)
 
-	gw := metrics_gateway.NewGateway(
-		metrics_gateway.MetricsGatewayConfig{Address: srv.URL},
+	gw := metricsgateway.NewGateway(
+		metricsgateway.MetricsGatewayConfig{Address: srv.URL},
 		srv.Client(),
 		compression.GzipCompressor{},
 		encryption.RSAEncryptor{},

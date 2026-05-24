@@ -1,4 +1,4 @@
-package audit_gateway
+package auditgateway
 
 import (
 	"context"
@@ -51,22 +51,14 @@ func (g *AuditRemoteGateway) CreateAudit(ctx context.Context, e dto.AuditEvent) 
 		return err
 	}
 
-	var resp *http.Response
-
-	err = retry.DoWithRetry(ctx, func() error {
+	return retry.DoWithRetry(ctx, func() error {
 		r, sendErr := g.createAuditSend(ctx, prepared)
 		if sendErr != nil {
 			return sendErr
 		}
-		resp = r
-		return nil
+		defer r.Body.Close()
+		return g.createAuditProcessResponse(r)
 	}, g.retryOpts...)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	return g.createAuditProcessResponse(resp)
 }
 
 var _ port.AuditGateway = (*AuditRemoteGateway)(nil)

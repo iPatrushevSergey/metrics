@@ -1,4 +1,4 @@
-package audit_gateway
+package auditgateway
 
 import "time"
 

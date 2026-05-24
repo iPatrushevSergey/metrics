@@ -28,7 +28,7 @@ type App struct {
 	CancelPoll context.CancelFunc
 	CancelSend context.CancelFunc
 
-	BufferedGateway *metrics_gateway.BufferedMetricsGateway
+	BufferedGateway *metricsgateway.BufferedMetricsGateway
 	GatewayCloser   io.Closer
 
 	reportWorker *worker.ReportWorker

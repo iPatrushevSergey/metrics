@@ -1,4 +1,4 @@
-package metrics_gateway
+package metricsgateway
 
 import "time"
 
