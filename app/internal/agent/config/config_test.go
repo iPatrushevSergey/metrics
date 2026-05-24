@@ -36,7 +36,7 @@ agent:
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
-	assert.Equal(t, "http://127.0.0.1:8080", cfg.Agent.Address)
+	assert.Equal(t, "http://127.0.0.1:8080", cfg.Agent.MetricsGatewayConfig.Address)
 	assert.Equal(t, 2*time.Second, cfg.Agent.PollInterval)
 }
 
@@ -55,7 +55,7 @@ agent:
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
-	assert.Equal(t, "http://example.com:8088", cfg.Agent.Address)
+	assert.Equal(t, "http://example.com:8088", cfg.Agent.MetricsGatewayConfig.Address)
 	assert.Equal(t, 4*time.Second, cfg.Agent.PollInterval)
 	assert.Equal(t, 2, cfg.Agent.RateLimit)
 }
