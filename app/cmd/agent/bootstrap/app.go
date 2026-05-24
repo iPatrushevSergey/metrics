@@ -59,13 +59,13 @@ func (a *AgentApp) Run(shutdownCtx context.Context) error {
 
 	metricsRepo := inmemory.NewMetricsRepository()
 	metricsSampler := sampler.NewMetricsSampler()
-	metricsGateway := metrics_gateway.NewGateway(
+	metricsGateway := metricsgateway.NewGateway(
 		a.cfg.Agent.MetricsGatewayConfig,
 		&http.Client{Timeout: a.cfg.Agent.MetricsGatewayConfig.HTTPTimeout},
 		compression.NewGzipCompressor(),
 		encryptor,
 		integrity.NewSHA256Hasher(a.cfg.Agent.Key),
-		retry.WithRetriableCheck(http_client.IsRetriable),
+		retry.WithRetriableCheck(httpclient.IsRetriable),
 		retry.WithMaxRetries(3),
 		retry.WithBackoffFunc(func(attempt int) time.Duration {
 			switch attempt {
@@ -80,10 +80,10 @@ func (a *AgentApp) Run(shutdownCtx context.Context) error {
 	)
 
 	var totalMetricsGateway port.MetricsGateway = metricsGateway
-	var bufferedMetricsGateway *metrics_gateway.BufferedMetricsGateway
+	var bufferedMetricsGateway *metricsgateway.BufferedMetricsGateway
 	if a.cfg.Agent.RateLimit > 0 {
 		var err error
-		bufferedMetricsGateway, err = metrics_gateway.NewBufferedMetricsGateway(metricsGateway, a.log, a.cfg.Agent.RateLimit, sendCtx)
+		bufferedMetricsGateway, err = metricsgateway.NewBufferedMetricsGateway(metricsGateway, a.log, a.cfg.Agent.RateLimit, sendCtx)
 		if err != nil {
 			return fmt.Errorf("buffered metrics gateway: %w", err)
 		}

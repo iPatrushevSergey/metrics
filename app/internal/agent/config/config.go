@@ -26,7 +26,7 @@ type Config struct {
 
 // Agent holds collector settings.
 type Agent struct {
-	metrics_gateway.MetricsGatewayConfig `mapstructure:",squash"`
+	metricsgateway.MetricsGatewayConfig `mapstructure:",squash"`
 	PollInterval                         time.Duration `mapstructure:"poll_interval"`
 	ReportInterval                       time.Duration `mapstructure:"report_interval"`
 	// RateLimit is the worker-pool size: max simultaneous outbound metric batch RPCs toward the server. Not "requests per second".

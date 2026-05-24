@@ -1,4 +1,4 @@
-package metrics_gateway
+package metricsgateway
 
 import (
 	"context"
@@ -40,7 +40,7 @@ func NewBufferedMetricsGateway(
 	sendCtx context.Context,
 ) (*BufferedMetricsGateway, error) {
 	if workers <= 0 {
-		return nil, errors.New("metrics_gateway: workers must be > 0")
+		return nil, errors.New("metricsgateway: workers must be > 0")
 	}
 	return &BufferedMetricsGateway{
 		delegate: delegate,

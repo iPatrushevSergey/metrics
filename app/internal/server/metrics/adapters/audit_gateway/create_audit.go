@@ -1,4 +1,4 @@
-package audit_gateway
+package auditgateway
 
 import (
 	"bytes"
@@ -63,8 +63,8 @@ func (g *AuditRemoteGateway) createAuditSend(ctx context.Context, prepReq prepar
 		msg = readErr.Error()
 	}
 
-	if http_client.IsRetriableHTTPStatus(resp.StatusCode) {
-		return nil, &http_client.RetriableStatusError{Code: resp.StatusCode}
+	if httpclient.IsRetriableHTTPStatus(resp.StatusCode) {
+		return nil, &httpclient.RetriableStatusError{Code: resp.StatusCode}
 	}
 	return nil, fmt.Errorf("HTTP %s: %s", resp.Status, msg)
 }

@@ -1,4 +1,4 @@
-package metrics_gateway
+package metricsgateway
 
 import (
 	"context"
@@ -95,7 +95,7 @@ func TestMetricsGateway_MetricsUpdateBatch_retriesOn503(t *testing.T) {
 		integrity.SHA256Hasher{},
 		retry.WithMaxRetries(2),
 		retry.WithConstantBackoff(0),
-		retry.WithRetriableCheck(http_client.IsRetriable),
+		retry.WithRetriableCheck(httpclient.IsRetriable),
 	)
 
 	val := 1.0

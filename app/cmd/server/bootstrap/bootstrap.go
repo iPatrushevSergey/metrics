@@ -201,13 +201,13 @@ func Run() error {
 
 		// Initialize audit remote gateway.
 		if auditURL != "" {
-			auditGateway, err = audit_gateway.NewAuditRemoteGateway(
-				audit_gateway.AuditGatewayConfig{
+			auditGateway, err = auditgateway.NewAuditRemoteGateway(
+				auditgateway.AuditGatewayConfig{
 					URL:         auditURL,
 					HTTPTimeout: cfg.Server.AuditHTTPTimeout,
 				},
 				&http.Client{Timeout: cfg.Server.AuditHTTPTimeout},
-				retry.WithRetriableCheck(http_client.IsRetriable),
+				retry.WithRetriableCheck(httpclient.IsRetriable),
 				retry.WithMaxRetries(3),
 				retry.WithBackoffFunc(func(attempt int) time.Duration {
 					switch attempt {
