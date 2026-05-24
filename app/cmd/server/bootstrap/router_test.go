@@ -18,7 +18,7 @@ func TestNewRouter(t *testing.T) {
 		WithTransactor(pkginmemory.NewTransactor()),
 	)
 
-	r, err := NewRouter(f, logger.NewNopLogger(), "secret", nil)
+	r, err := NewRouter(f, logger.NewNopLogger(), "secret", nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 }
