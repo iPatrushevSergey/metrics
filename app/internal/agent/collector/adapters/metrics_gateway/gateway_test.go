@@ -12,6 +12,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/http_client"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/integrity"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/netutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ func TestMetricsGateway_MetricsUpdateBatch_empty(t *testing.T) {
 func TestMetricsGateway_MetricsUpdateBatch_success(t *testing.T) {
 	wantRealIP := "10.1.2.3"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, wantRealIP, r.Header.Get("X-Real-IP"))
+		assert.Equal(t, wantRealIP, r.Header.Get(netutil.RealIPHeader))
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(srv.Close)
