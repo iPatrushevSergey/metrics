@@ -33,7 +33,7 @@ func TestTrustedSubnet_allowed(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(realIPHeader, "192.168.1.10")
+	req.Header.Set("X-Real-IP", "192.168.1.10")
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
@@ -49,7 +49,7 @@ func TestTrustedSubnet_forbidden(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(realIPHeader, "203.0.113.1")
+	req.Header.Set("X-Real-IP", "203.0.113.1")
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusForbidden, w.Code)
 }
