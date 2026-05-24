@@ -4,6 +4,7 @@ package metrics_gateway
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	gatewayport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/dto"
@@ -12,6 +13,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/encryption"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/integrity"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/retry"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/netutil"
 )
 
 var (
@@ -32,6 +34,7 @@ type preparedRequest struct {
 type metricsGateway struct {
 	httpClient *http.Client
 	baseURL    string
+	realIP     string
 	compressor gatewayport.Compressor
 	encryptor  gatewayport.Encryptor
 	hasher     gatewayport.Hasher
@@ -47,9 +50,16 @@ func NewGateway(
 	hasher gatewayport.Hasher,
 	retryOpts ...retry.RetryOption,
 ) *metricsGateway {
+	realIP := strings.TrimSpace(cfg.RealIP)
+	if realIP == "" {
+		if ip, err := netutil.HostIPv4(); err == nil {
+			realIP = ip
+		}
+	}
 	return &metricsGateway{
 		httpClient: httpClient,
 		baseURL:    cfg.Address,
+		realIP:     realIP,
 		compressor: compressor,
 		encryptor:  encryptor,
 		hasher:     hasher,
