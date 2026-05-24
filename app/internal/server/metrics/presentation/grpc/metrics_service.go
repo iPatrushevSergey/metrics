@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	metricspb "github.com/iPatrushevSergey/metrics/app/internal/pkg/grpc/metrics"
-	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/grpc/interceptors"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/netutil"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
 	appdto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
@@ -15,6 +15,7 @@ import (
 	grpcdto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/grpc/dto"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -35,7 +36,12 @@ func (s *MetricsService) UpdateMetrics(
 	ctx context.Context,
 	req *metricspb.UpdateMetricsRequest,
 ) (*metricspb.UpdateMetricsResponse, error) {
-	clientIP := interceptors.RealIPFromContext(ctx)
+	clientIP := ""
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if vals := md.Get(netutil.RealIPHeader); len(vals) > 0 {
+			clientIP = vals[0]
+		}
+	}
 
 	var reqDTOs []grpcdto.Metric
 	if req != nil && len(req.GetMetrics()) > 0 {
