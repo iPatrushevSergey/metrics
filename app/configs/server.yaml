@@ -13,6 +13,7 @@ server:
   audit_file: ""
   audit_url: ""
   audit_http_timeout: "2s"
+  trusted_subnet: ""
 
 audit:
   audit_sub_size: 500
