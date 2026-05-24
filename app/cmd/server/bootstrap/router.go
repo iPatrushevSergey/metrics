@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"crypto/rsa"
 	"fmt"
+	"net"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -12,15 +13,23 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/cryption"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/integrity"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/logger"
+	"github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/http/middleware/trustedsubnet"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 	metricrouter "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/http/router"
 )
 
 // NewRouter composes global middleware and module routers.
-func NewRouter(ucFactory UseCaseFactory, log port.Logger, key string, priv *rsa.PrivateKey) (*gin.Engine, error) {
+func NewRouter(
+	ucFactory UseCaseFactory,
+	log port.Logger,
+	key string,
+	priv *rsa.PrivateKey,
+	trustedSubnet *net.IPNet,
+) (*gin.Engine, error) {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
+	r.Use(trustedsubnet.TrustedSubnet(trustedSubnet))
 
 	gzipCompressor, err := compression.NewGzipCompressor(gzip.DefaultCompression)
 	if err != nil {
