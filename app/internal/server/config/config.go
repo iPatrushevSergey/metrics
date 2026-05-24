@@ -22,8 +22,14 @@ import (
 type Config struct {
 	Logger logger.Config   `mapstructure:"logger"`
 	Server Server          `mapstructure:"server"`
+	GRPC   GRPC            `mapstructure:"grpc"`
 	Audit  Audit           `mapstructure:"audit"`
 	DB     postgres.Config `mapstructure:"database"`
+}
+
+// GRPC holds gRPC server listen settings.
+type GRPC struct {
+	Address string `mapstructure:"address"`
 }
 
 // Audit holds audit fan-out and delivery settings.
@@ -72,6 +78,7 @@ func LoadConfig() (Config, error) {
 	fs.String("audit-http-timeout", "", "audit HTTP timeout (seconds or duration)")
 	fs.Int("audit-sub-size", 0, "audit subscriber channel buffer size per sink")
 	fs.String("shutdown-timeout", "", "graceful shutdown timeout (seconds or duration)")
+	fs.String("grpc-address", "", "gRPC listen address (host:port)")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return Config{}, fmt.Errorf("flag parsing error: %w", err)
@@ -202,6 +209,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.audit_url", "")
 	v.SetDefault("server.audit_http_timeout", "2s")
 	v.SetDefault("server.trusted_subnet", "")
+	v.SetDefault("grpc.address", "127.0.0.1:3000")
 
 	v.SetDefault("audit.audit_sub_size", 500)
 
@@ -234,6 +242,7 @@ func bindEnv(v *viper.Viper) {
 	_ = v.BindEnv("server.audit_url", "AUDIT_URL")
 	_ = v.BindEnv("server.audit_http_timeout", "AUDIT_HTTP_TIMEOUT")
 	_ = v.BindEnv("server.trusted_subnet", "TRUSTED_SUBNET")
+	_ = v.BindEnv("grpc.address", "GRPC_ADDRESS")
 	_ = v.BindEnv("audit.audit_sub_size", "AUDIT_SUB_SIZE")
 
 	_ = v.BindEnv("database.uri", "DATABASE_DSN")
@@ -261,6 +270,7 @@ func applyFlagsWhenEnvUnset(v *viper.Viper, fs *pflag.FlagSet) error {
 		{"server.audit_http_timeout", "AUDIT_HTTP_TIMEOUT", "audit-http-timeout"},
 		{"server.shutdown_timeout", "SHUTDOWN_TIMEOUT", "shutdown-timeout"},
 		{"server.trusted_subnet", "TRUSTED_SUBNET", "trusted-subnet"},
+		{"grpc.address", "GRPC_ADDRESS", "grpc-address"},
 	} {
 		if _, ok := os.LookupEnv(row.env); ok {
 			continue
@@ -326,6 +336,14 @@ func finalizeConfig(cfg *Config) error {
 		if _, _, err := net.ParseCIDR(s.TrustedSubnet); err != nil {
 			return fmt.Errorf("invalid trusted_subnet: %w", err)
 		}
+	}
+
+	if addr := strings.TrimSpace(cfg.GRPC.Address); addr != "" {
+		parsed, err := parseListenAddress(addr)
+		if err != nil {
+			return fmt.Errorf("invalid grpc address: %w", err)
+		}
+		cfg.GRPC.Address = parsed
 	}
 
 	cfg.DB.Pool.URI = strings.TrimSpace(cfg.DB.Pool.URI)
