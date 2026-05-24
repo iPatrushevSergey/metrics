@@ -4,6 +4,7 @@ package lifecycle
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,11 +15,15 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/worker"
+
+	"google.golang.org/grpc"
 )
 
 // App represents the application lifecycle.
 type App struct {
 	Server          *http.Server
+	GRPCListener net.Listener
+	GRPCServer   *grpc.Server
 	UseCases        factory.UseCaseFactory
 	Log             port.Logger
 	ShutdownTimeout time.Duration
@@ -72,6 +77,16 @@ func (a *App) Start() {
 			os.Exit(1)
 		}
 	}()
+
+	if a.GRPCServer != nil && a.GRPCListener != nil {
+		go func() {
+			a.Log.Info("grpc server listening", "address", a.GRPCListener.Addr().String())
+			if err := a.GRPCServer.Serve(a.GRPCListener); err != nil {
+				a.Log.Error("grpc server failed", "error", err)
+				os.Exit(1)
+			}
+		}()
+	}
 }
 
 // Stop stops the application.
@@ -87,6 +102,10 @@ func (a *App) Stop() error {
 	if err := a.Server.Shutdown(ctx); err != nil {
 		a.Log.Error("server shutdown failed", "error", err)
 		return err
+	}
+
+	if a.GRPCServer != nil {
+		a.GRPCServer.GracefulStop()
 	}
 
 	if a.cancelSnapshotWorker != nil {
