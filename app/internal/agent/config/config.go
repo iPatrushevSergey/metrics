@@ -17,6 +17,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway"
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_grpc"
 )
 
 const (
@@ -31,14 +32,14 @@ type Config struct {
 
 // Agent holds collector settings.
 type Agent struct {
-	metrics_gateway.MetricsGatewayConfig `mapstructure:",squash"`
-	PollInterval                         time.Duration `mapstructure:"poll_interval"`
-	ReportInterval                       time.Duration `mapstructure:"report_interval"`
+	metrics_gateway.MetricsGatewayConfig  `mapstructure:",squash"`
+	metrics_grpc.MetricsGRPCGatewayConfig `mapstructure:",squash"`
+	PollInterval                          time.Duration `mapstructure:"poll_interval"`
+	ReportInterval                        time.Duration `mapstructure:"report_interval"`
 	// RateLimit is the worker-pool size: max simultaneous outbound metric batch RPCs toward the server. Not "requests per second".
 	RateLimit      int    `mapstructure:"rate_limit"`
 	Key            string `mapstructure:"key"`
 	CryptoKey      string `mapstructure:"crypto_key"`
-	GRPCAddress    string `mapstructure:"grpc_address"`
 	ReportProtocol string `mapstructure:"report_protocol"`
 }
 
@@ -269,16 +270,17 @@ func finalizeConfig(cfg *Config) error {
 		)
 	}
 
-	a.GRPCAddress = strings.TrimSpace(a.GRPCAddress)
+	a.MetricsGRPCGatewayConfig.Address = strings.TrimSpace(a.MetricsGRPCGatewayConfig.Address)
+	a.MetricsGRPCGatewayConfig.RealIP = strings.TrimSpace(a.MetricsGatewayConfig.RealIP)
 	if a.ReportProtocol == ReportProtocolGRPC {
-		if a.GRPCAddress == "" {
+		if a.MetricsGRPCGatewayConfig.Address == "" {
 			return fmt.Errorf("grpc address is required when report protocol is grpc")
 		}
 		var addr Address
-		if err := addr.Set("http://" + a.GRPCAddress); err != nil {
+		if err := addr.Set("http://" + a.MetricsGRPCGatewayConfig.Address); err != nil {
 			return fmt.Errorf("invalid grpc address: %w", err)
 		}
-		a.GRPCAddress = addr.String()
+		a.MetricsGRPCGatewayConfig.Address = addr.String()
 	}
 
 	return nil
