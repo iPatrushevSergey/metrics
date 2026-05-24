@@ -23,7 +23,7 @@ func StartMetricsServer(t *testing.T) *httptest.Server {
 		bootstrap.WithMetricSvc(service.MetricService{}),
 		bootstrap.WithTransactor(pkginmemory.NewTransactor()),
 	)
-	r, err := bootstrap.NewRouter(f, logger.NewNopLogger(), "", nil)
+	r, err := bootstrap.NewRouter(f, logger.NewNopLogger(), "", nil, nil)
 	if err != nil {
 		t.Fatalf("new router: %v", err)
 	}
