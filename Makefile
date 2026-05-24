@@ -1,6 +1,8 @@
-.PHONY: build build-server build-agent run-server run-agent test test-unit test-contract test-component test-integration test-e2e test-all cover cover-unit migrate generate-mocks
+.PHONY: build build-server build-agent run-server run-agent test test-unit test-contract test-component test-integration test-e2e test-all cover cover-unit migrate generate-mocks generate-proto
 
 APP_DIR := app
+PROTO_DIR := $(APP_DIR)/internal/pkg/grpc/metrics
+PROTO_FILE := $(PROTO_DIR)/metrics.proto
 
 # go_json: Gin uses goccy/go-json instead of encoding/json for binding/rendering
 build: build-server build-agent
@@ -53,6 +55,12 @@ migrate:
 MOCKGEN := go run go.uber.org/mock/mockgen@v0.6.0
 SERVER_PORT := internal/server/metrics/application/port
 AGENT_PORT := internal/agent/collector/application/port
+
+generate-proto:
+	protoc \
+		--go_out=. --go_opt=module=github.com/iPatrushevSergey/metrics \
+		--go-grpc_out=. --go-grpc_opt=module=github.com/iPatrushevSergey/metrics \
+		$(PROTO_FILE)
 
 generate-mocks:
 	cd $(APP_DIR) && $(MOCKGEN) -source=$(SERVER_PORT)/metrics_repository.go -destination=$(SERVER_PORT)/mocks/mock_metrics_repository.go -package=mocks
