@@ -31,7 +31,6 @@ import (
 	metricspb "github.com/iPatrushevSergey/metrics/app/internal/pkg/grpc/metrics"
 	grpcinterceptors "github.com/iPatrushevSergey/metrics/app/internal/pkg/presentation/grpc/interceptors"
 	metricgrpc "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/grpc"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/lifecycle"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 )
@@ -269,7 +268,7 @@ func Run() error {
 	}
 
 	// Initialize application.
-	app := &lifecycle.App{
+	app := &App{
 		Server: &http.Server{
 			Addr:    cfg.Server.Address,
 			Handler: router,
