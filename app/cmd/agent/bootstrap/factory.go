@@ -5,13 +5,13 @@ import (
 
 	collectorfactory "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/factory"
 	collectorport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
-	collectorpresfactory "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/factory"
+	collectorpresport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/option"
 )
 
 // UseCaseFactory provides all module use cases needed by composition root.
 type UseCaseFactory interface {
-	collectorpresfactory.UseCaseFactory
+	collectorpresport.UseCaseFactory
 }
 
 // useCaseFactory implements UseCaseFactory; built in composition root.

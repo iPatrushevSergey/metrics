@@ -7,18 +7,18 @@ import (
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/port"
 )
 
 // PollRuntimeWorker runs PollRuntimeTick on each interval.
 type PollRuntimeWorker struct {
-	useCases factory.UseCaseFactory
+	useCases presport.UseCaseFactory
 	log      port.Logger
 	interval time.Duration
 }
 
 // NewPollRuntimeWorker creates a poll runtime background worker.
-func NewPollRuntimeWorker(useCases factory.UseCaseFactory, log port.Logger, interval time.Duration) *PollRuntimeWorker {
+func NewPollRuntimeWorker(useCases presport.UseCaseFactory, log port.Logger, interval time.Duration) *PollRuntimeWorker {
 	return &PollRuntimeWorker{useCases: useCases, log: log, interval: interval}
 }
 

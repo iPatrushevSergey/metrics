@@ -5,7 +5,7 @@ import (
 
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 )
 
 type stubUseCase[In, Out any] struct {
@@ -59,4 +59,4 @@ func (f stubUseCaseFactory) CreateRemoteAuditUseCase() port.UseCase[dto.AuditEve
 	return nil
 }
 
-var _ factory.UseCaseFactory = stubUseCaseFactory{}
+var _ presport.UseCaseFactory = stubUseCaseFactory{}

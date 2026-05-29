@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/port"
 )
 
 // ReportWorker runs ReportBatchTick on each interval.
 type ReportWorker struct {
 	sendCtx  context.Context
-	useCases factory.UseCaseFactory
+	useCases presport.UseCaseFactory
 	log      port.Logger
 	interval time.Duration
 	sendsWg  sync.WaitGroup
@@ -21,7 +21,7 @@ type ReportWorker struct {
 // NewReportWorker creates a report background worker.
 func NewReportWorker(
 	sendCtx context.Context,
-	useCases factory.UseCaseFactory,
+	useCases presport.UseCaseFactory,
 	log port.Logger,
 	interval time.Duration,
 ) *ReportWorker {

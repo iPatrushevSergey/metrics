@@ -6,12 +6,12 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/factory"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/domain/service"
-	metricpresfactory "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	metricpresport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 )
 
 // UseCaseFactory provides all module use cases needed by the composition root.
 type UseCaseFactory interface {
-	metricpresfactory.UseCaseFactory
+	metricpresport.UseCaseFactory
 }
 
 // useCaseFactory implements UseCaseFactory.
@@ -29,7 +29,7 @@ type useCaseFactory struct {
 	createRemoteAudit      port.UseCase[dto.AuditEvent, struct{}]
 }
 
-var _ metricpresfactory.UseCaseFactory = (*useCaseFactory)(nil)
+var _ metricpresport.UseCaseFactory = (*useCaseFactory)(nil)
 
 // NewUseCaseFactory builds the use case factory using functional options.
 func NewUseCaseFactory(opts ...option.Option[factoryParams]) UseCaseFactory {

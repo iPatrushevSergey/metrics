@@ -1,5 +1,5 @@
-// Package factory defines the presentation-layer contract for metrics use cases.
-package factory
+// Package port defines the presentation-layer contract for metrics use cases.
+package port
 
 import (
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"

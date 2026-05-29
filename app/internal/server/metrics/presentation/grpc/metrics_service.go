@@ -11,7 +11,7 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application"
 	appdto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 	grpcdto "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/grpc/dto"
 
 	"google.golang.org/grpc/codes"
@@ -22,12 +22,12 @@ import (
 // MetricsService implements the metrics gRPC service.
 type MetricsService struct {
 	metricspb.UnimplementedMetricsServer
-	useCases factory.UseCaseFactory
+	useCases presport.UseCaseFactory
 	log      port.Logger
 }
 
 // NewMetricsService creates a new metrics gRPC service.
-func NewMetricsService(useCases factory.UseCaseFactory, log port.Logger) *MetricsService {
+func NewMetricsService(useCases presport.UseCaseFactory, log port.Logger) *MetricsService {
 	return &MetricsService{useCases: useCases, log: log}
 }
 

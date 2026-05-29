@@ -1,5 +1,5 @@
-// Package factory defines the presentation-layer contract for collector use cases.
-package factory
+// Package port defines the presentation-layer contract for collector use cases.
+package port
 
 import "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
 

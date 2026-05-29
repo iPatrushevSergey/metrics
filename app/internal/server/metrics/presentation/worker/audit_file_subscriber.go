@@ -5,20 +5,20 @@ import (
 
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 )
 
 // AuditFileSubscriber is a worker for recording audit events to a file.
 type AuditFileSubscriber struct {
 	events   <-chan dto.AuditEvent
-	useCases factory.UseCaseFactory
+	useCases presport.UseCaseFactory
 	log      port.Logger
 }
 
 // NewAuditFileSubscriber creates a new worker for recording audit events to a file.
 func NewAuditFileSubscriber(
 	events <-chan dto.AuditEvent,
-	useCases factory.UseCaseFactory,
+	useCases presport.UseCaseFactory,
 	log port.Logger,
 ) *AuditFileSubscriber {
 	return &AuditFileSubscriber{events: events, useCases: useCases, log: log}

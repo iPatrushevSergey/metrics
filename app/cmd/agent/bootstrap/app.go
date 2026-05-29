@@ -11,13 +11,13 @@ import (
 
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/metrics_gateway"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/worker"
 )
 
 // App represents the application lifecycle.
 type App struct {
-	UseCases       factory.UseCaseFactory
+	UseCases       presport.UseCaseFactory
 	Log            port.Logger
 	PollInterval   time.Duration
 	ReportInterval time.Duration

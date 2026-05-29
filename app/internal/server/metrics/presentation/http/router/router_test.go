@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/logger"
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +55,7 @@ func (stubFactory) CreateRemoteAuditUseCase() port.UseCase[dto.AuditEvent, struc
 	return stubUseCase[dto.AuditEvent, struct{}]{}
 }
 
-var _ factory.UseCaseFactory = stubFactory{}
+var _ presport.UseCaseFactory = stubFactory{}
 
 func TestRegisterRoutes_ping(t *testing.T) {
 	gin.SetMode(gin.TestMode)

@@ -13,7 +13,7 @@ import (
 
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/worker"
 
 	"google.golang.org/grpc"
@@ -24,7 +24,7 @@ type App struct {
 	Server          *http.Server
 	GRPCListener net.Listener
 	GRPCServer   *grpc.Server
-	UseCases        factory.UseCaseFactory
+	UseCases        presport.UseCaseFactory
 	Log             port.Logger
 	ShutdownTimeout time.Duration
 

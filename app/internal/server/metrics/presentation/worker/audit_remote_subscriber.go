@@ -5,20 +5,20 @@ import (
 
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/dto"
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 )
 
 // AuditRemoteSubscriber is a worker for sending audit events to a remote endpoint.
 type AuditRemoteSubscriber struct {
 	events   <-chan dto.AuditEvent
-	useCases factory.UseCaseFactory
+	useCases presport.UseCaseFactory
 	log      port.Logger
 }
 
 // NewAuditRemoteSubscriber creates a new worker for sending audit events to a remote endpoint.
 func NewAuditRemoteSubscriber(
 	events <-chan dto.AuditEvent,
-	useCases factory.UseCaseFactory,
+	useCases presport.UseCaseFactory,
 	log port.Logger,
 ) *AuditRemoteSubscriber {
 	return &AuditRemoteSubscriber{events: events, useCases: useCases, log: log}

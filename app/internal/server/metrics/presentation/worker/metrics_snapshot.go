@@ -6,19 +6,19 @@ import (
 	"time"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/server/metrics/presentation/port"
 )
 
 // SnapshotWorker periodically persists the in-memory metrics snapshot to a file.
 type SnapshotWorker struct {
-	useCases      factory.UseCaseFactory
+	useCases      presport.UseCaseFactory
 	log           port.Logger
 	storeInterval time.Duration
 }
 
 // NewSnapshotWorker creates a metrics snapshot background worker.
 func NewSnapshotWorker(
-	useCases factory.UseCaseFactory,
+	useCases presport.UseCaseFactory,
 	log port.Logger,
 	storeInterval time.Duration,
 ) *SnapshotWorker {

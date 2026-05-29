@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/factory"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/port"
 )
 
 type stubUseCase struct {
@@ -36,4 +36,4 @@ func (f stubUseCaseFactory) ReportBatchTick() port.UseCase[struct{}, int] {
 	return f.reportBatch
 }
 
-var _ factory.UseCaseFactory = stubUseCaseFactory{}
+var _ presport.UseCaseFactory = stubUseCaseFactory{}
