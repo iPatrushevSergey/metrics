@@ -209,7 +209,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.audit_url", "")
 	v.SetDefault("server.audit_http_timeout", "2s")
 	v.SetDefault("server.trusted_subnet", "")
-	v.SetDefault("grpc.address", "127.0.0.1:3000")
+	v.SetDefault("grpc.address", "")
 
 	v.SetDefault("audit.audit_sub_size", 500)
 

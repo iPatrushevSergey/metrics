@@ -183,7 +183,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("agent.key", "")
 	v.SetDefault("agent.crypto_key", "")
 	v.SetDefault("agent.rate_limit", 0)
-	v.SetDefault("agent.grpc_address", "127.0.0.1:3000")
+	v.SetDefault("agent.grpc_address", "")
 	v.SetDefault("agent.report_protocol", ReportProtocolHTTP)
 }
 
