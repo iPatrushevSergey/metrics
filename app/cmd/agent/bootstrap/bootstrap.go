@@ -14,7 +14,6 @@ import (
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/repository/inmemory"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/adapters/sampler"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
-	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/lifecycle"
 	"github.com/iPatrushevSergey/metrics/app/internal/agent/config"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/compression"
 	"github.com/iPatrushevSergey/metrics/app/internal/pkg/adapters/encryption"
@@ -124,7 +123,7 @@ func Run() error {
 	)
 
 	// Initialize application.
-	app := &lifecycle.App{
+	app := &App{
 		UseCases:        useCases,
 		Log:             log,
 		PollInterval:    cfg.Agent.PollInterval,

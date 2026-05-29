@@ -1,5 +1,5 @@
 // Package lifecycle manages the agent application lifecycle.
-package lifecycle
+package bootstrap
 
 import (
 	"context"
