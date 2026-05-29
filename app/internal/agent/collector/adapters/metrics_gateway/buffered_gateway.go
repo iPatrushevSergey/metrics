@@ -113,12 +113,15 @@ func (c *BufferedMetricsGateway) MetricsUpdateBatch(ctx context.Context, metrics
 			return c.delegate.MetricsUpdateBatch(callCtx, metrics)
 		},
 	}
+	timer := time.NewTimer(1 * time.Second)
+	defer timer.Stop()
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case c.jobs <- j:
 		return nil
-	case <-time.After(1 * time.Second):
+	case <-timer.C:
 		c.log.Warn(
 			"batch jobs channel is full, dropping batch to prevent goroutine backlog",
 			"rate_limit", c.workers,
