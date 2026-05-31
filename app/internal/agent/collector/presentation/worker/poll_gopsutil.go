@@ -1,0 +1,42 @@
+package worker
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/iPatrushevSergey/metrics/app/internal/agent/collector/application/port"
+	presport "github.com/iPatrushevSergey/metrics/app/internal/agent/collector/presentation/port"
+)
+
+// PollGopsutilWorker runs PollGopsutilTick on each interval.
+type PollGopsutilWorker struct {
+	useCases presport.UseCaseFactory
+	log      port.Logger
+	interval time.Duration
+}
+
+// NewPollGopsutilWorker creates a poll gopsutil background worker.
+func NewPollGopsutilWorker(useCases presport.UseCaseFactory, log port.Logger, interval time.Duration) *PollGopsutilWorker {
+	return &PollGopsutilWorker{useCases: useCases, log: log, interval: interval}
+}
+
+// Run executes the worker loop.
+func (w *PollGopsutilWorker) Run(ctx context.Context) {
+	w.log.Info("poll gopsutil worker started", "interval", w.interval)
+
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			w.log.Info("poll gopsutil worker stopped")
+			return
+		case <-ticker.C:
+			if _, err := w.useCases.PollGopsutilTick().Execute(ctx, struct{}{}); err != nil && !errors.Is(err, context.Canceled) {
+				w.log.Error("poll gopsutil tick failed", "error", err)
+			}
+		}
+	}
+}
